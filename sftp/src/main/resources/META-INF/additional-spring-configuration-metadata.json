@@ -1,0 +1,47 @@
+{"properties": [
+  {
+    "name": "camel.sftp.maximumMessageCount",
+    "type": "java.lang.Integer",
+    "description": "A description for 'camel.sftp.maximumMessageCount'"
+  },
+  {
+    "name": "camel.sftp.timePeriod",
+    "type": "java.lang.Integer",
+    "description": "A description for 'camel.sftp.timePeriod'"
+  },
+  {
+    "name": "camel.mongodb.database",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.mongodb.database'"
+  },
+  {
+    "name": "camel.mongodb.collection1",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.mongodb.collection1'"
+  },
+  {
+    "name": "camel.mongodb.collection2",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.mongodb.collection2'"
+  },
+  {
+    "name": "camel.mongodb.collection3",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.mongodb.collection3'"
+  },
+  {
+    "name": "camel.sftp.link",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.sftp.link'"
+  },
+  {
+    "name": "camel.sftp.password",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.sftp.password'"
+  },
+  {
+    "name": "error.internalServerError",
+    "type": "java.lang.String",
+    "description": "A description for 'error.internalServerError'"
+  }
+]}

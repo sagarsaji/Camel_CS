@@ -1,0 +1,74 @@
+<inventory>
+  <item>cat4</item>
+  <item>Bicycle Parts</item>
+  <item>
+    <itemId>item6</itemId>
+    <categoryId>cat4</categoryId>
+    <availableStock>100</availableStock>
+    <sellingPrice>95</sellingPrice>
+  </item>
+  <item>
+    <categoryid>cat5</categoryid>
+    <categoryname>Boat Accessories</categoryname>
+    <item>
+      <itemId>item2</itemId>
+      <categoryId>cat5</categoryId>
+      <availableStock>300</availableStock>
+      <sellingPrice>65</sellingPrice>
+    </item>
+    <item>
+      <itemId>item7</itemId>
+      <categoryId>cat5</categoryId>
+      <availableStock>30</availableStock>
+      <sellingPrice>240</sellingPrice>
+    </item>
+  </item>
+  <item>
+    <categoryid>cat2</categoryid>
+    <categoryname>Motorcycle Gear</categoryname>
+    <item>
+      <itemId>item1</itemId>
+      <categoryId>cat2</categoryId>
+      <availableStock>340</availableStock>
+      <sellingPrice>115</sellingPrice>
+    </item>
+    <item>
+      <itemId>item9</itemId>
+      <categoryId>cat2</categoryId>
+      <availableStock>544</availableStock>
+      <sellingPrice>100</sellingPrice>
+    </item>
+  </item>
+  <item>
+    <categoryid>cat3</categoryid>
+    <categoryname>Truck Accessories</categoryname>
+    <item>
+      <itemId>item5</itemId>
+      <categoryId>cat3</categoryId>
+      <availableStock>1224</availableStock>
+      <sellingPrice>50</sellingPrice>
+    </item>
+    <item>
+      <itemId>item8</itemId>
+      <categoryId>cat3</categoryId>
+      <availableStock>450</availableStock>
+      <sellingPrice>40</sellingPrice>
+    </item>
+  </item>
+  <item>
+    <categoryid>cat1</categoryid>
+    <categoryname>Car Equipment</categoryname>
+    <item>
+      <itemId>item3</itemId>
+      <categoryId>cat1</categoryId>
+      <availableStock>4740</availableStock>
+      <sellingPrice>600</sellingPrice>
+    </item>
+    <item>
+      <itemId>item4</itemId>
+      <categoryId>cat1</categoryId>
+      <availableStock>150</availableStock>
+      <sellingPrice>950</sellingPrice>
+    </item>
+  </item>
+</inventory>

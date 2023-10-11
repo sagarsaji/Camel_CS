@@ -1,0 +1,22 @@
+{"properties": [
+  {
+    "name": "server.internalServerError",
+    "type": "java.lang.String",
+    "description": "A description for 'error.unknownError'"
+  },
+  {
+    "name": "error.itemNotFound",
+    "type": "java.lang.String",
+    "description": "A description for 'error.itemNotFound'"
+  },
+  {
+    "name": "camel.mongodb.database",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.mongodb.database'"
+  },
+  {
+    "name": "camel.mongodb.collection1",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.mongodb.collection1'"
+  }
+]}

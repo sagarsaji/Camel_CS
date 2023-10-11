@@ -1,0 +1,17 @@
+{"properties": [
+  {
+    "name": "server.internalServerError",
+    "type": "java.lang.String",
+    "description": "A description for 'error.unknownError'"
+  },
+  {
+    "name": "camel.getByItemId",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.getByItemId'"
+  },
+  {
+    "name": "camel.getByCategoryId",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.getByCategoryId'"
+  }
+]}
