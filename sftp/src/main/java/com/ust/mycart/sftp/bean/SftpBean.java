@@ -1,7 +1,7 @@
 package com.ust.mycart.sftp.bean;
 
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -30,10 +30,10 @@ public class SftpBean {
 	}
 
 	public void controlRefDateUpdation(Exchange exchange, @Header("controlId") String id) {
-		LocalDateTime time = LocalDateTime.now();
+
 		Map<String, Object> map = new HashMap<>();
 		map.put("_id", id);
-		map.put("date", time);
+		map.put("date", new Date());
 		exchange.getIn().setBody(map);
 	}
 
