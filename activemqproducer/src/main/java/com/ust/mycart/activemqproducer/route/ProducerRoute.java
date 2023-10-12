@@ -23,7 +23,7 @@ public class ProducerRoute extends RouteBuilder {
 				.put("/item").to("direct:updateItem");
 
 		// Route that sends message to the activeMQ
-		from("direct:updateItem").log(LoggingLevel.DEBUG, "Received message : ${body}")
+		from("direct:updateItem").routeId("producerRoute").log(LoggingLevel.DEBUG, "Received message : ${body}")
 				.log(LoggingLevel.INFO, "Message sending to activeMQ").unmarshal().json(JsonLibrary.Jackson)
 				.to("activemq:queue:updateItemQueue").setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200));
 

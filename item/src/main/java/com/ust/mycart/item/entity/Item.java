@@ -4,13 +4,20 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 public class Item {
 
 	@JsonProperty("_id")
 	private String _id;
 	@JsonProperty("itemName")
+	@NotBlank(message = "itemName should not be blank")
+	@NotNull(message = "itemName should not be null")
 	private String itemName;
 	@JsonProperty("categoryId")
+	@NotNull(message = "categoryId should not be null")
+	@NotBlank(message = "categoryId should not be blank")
 	private String categoryId;
 	@JsonProperty("lastUpdateDate")
 	private String lastUpdateDate;

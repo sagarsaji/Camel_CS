@@ -48,7 +48,7 @@ public class ItemRoute extends RouteBuilder {
 		onException(ItemException.class).handled(true).setHeader(Exchange.CONTENT_TYPE, constant("application/json"));
 
 		// Req 6 MongoDbException handled
-		onException(CamelMongoDbException.class).log(LoggingLevel.INFO, "mongo retry...")
+		onException(CamelMongoDbException.class).log(LoggingLevel.INFO, "Mongo Retry...")
 				.maximumRedeliveries(maximumRedeliveries).redeliveryDelay(redeliveryDelay)
 				.backOffMultiplier(backOffMultiplier).handled(true)
 				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
@@ -57,7 +57,7 @@ public class ItemRoute extends RouteBuilder {
 
 		onException(Throwable.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
 				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
-				.setBody(constant("{\"message\":\"${exception.message}\"}"));
+				.setBody(simple("{\"message\":\"${exception.message}\"}"));
 
 		// REST entry points
 		rest()
@@ -134,10 +134,10 @@ public class ItemRoute extends RouteBuilder {
 				.log(LoggingLevel.INFO, "Details fetched from database");
 
 		// Route to add an item
-		from("direct:addItems").unmarshal().json(JsonLibrary.Jackson, Item.class).to("direct:addItemPropertyAssigning")
-				.to("direct:greaterThanZeroCheck").to("direct:findByCategoryId").bean(itemBean, "dateAdding")
-				.to("direct:insertItemIntoDb").bean(itemBean, "postResponse").marshal().json()
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
+		from("direct:addItems").unmarshal().json(JsonLibrary.Jackson, Item.class).to("bean-validator:validate")
+				.to("direct:addItemPropertyAssigning").to("direct:greaterThanZeroCheck").to("direct:findByCategoryId")
+				.bean(itemBean, "dateAdding").to("direct:insertItemIntoDb").bean(itemBean, "postResponse").marshal()
+				.json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Item inserted into database");
 
 		// Route to update an item
