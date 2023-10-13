@@ -10,7 +10,7 @@ import org.bson.Document;
 public class StockUpdationProcessor implements Processor {
 
 	private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-	private static final LocalDateTime currentDateTime = LocalDateTime.now();
+	private static LocalDateTime currentDateTime;
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
@@ -23,6 +23,8 @@ public class StockUpdationProcessor implements Processor {
 		int soldout = exchange.getProperty("soldout", Integer.class);
 		int damage = exchange.getProperty("damaged", Integer.class);
 		int available = exchange.getProperty("availablestock", Integer.class);
+
+		currentDateTime = LocalDateTime.now();
 
 		lastupdatedate = currentDateTime.format(formatter);
 

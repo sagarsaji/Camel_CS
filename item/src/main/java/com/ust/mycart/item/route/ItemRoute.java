@@ -104,13 +104,6 @@ public class ItemRoute extends RouteBuilder {
 				.setProperty("sellingprice", simple("${body.itemPrice.sellingPrice}"))
 				.setProperty("messagebody", body());
 
-		from("direct:greaterThanZeroCheck").choice()
-				.when(simple("${exchangeProperty.baseprice} <= 0 || ${exchangeProperty.sellingprice} <= 0"))
-				.log(LoggingLevel.INFO, "Base price and Selling price should be greater than zero")
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(400))
-				.setBody(constant("{\"message\":\"{{error.greaterThanZeroException}}\"}"))
-				.throwException(new ItemException("greater than zero")).end();
-
 		from("direct:insertItemIntoDb")
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=insert");
 
@@ -121,27 +114,28 @@ public class ItemRoute extends RouteBuilder {
 				.setProperty("damaged", simple("${body[stockDetails][damaged]}"));
 
 		// Route to access item by item id
-		from("direct:getItemsById").to("direct:findByItemId").marshal().json().unmarshal()
+		from("direct:getItemsById").routeId("getItemsById").to("direct:findByItemId").marshal().json().unmarshal()
 				.json(JsonLibrary.Jackson, Item.class).setProperty("messagebody", body())
 				.setHeader("category_id", simple("${body.categoryId}")).to("direct:findByCategoryId")
 				.bean(itemBean, "postResponse").marshal().json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Item fetched from database");
 
 		// Route to access item by category id and include a filter
-		from("direct:getByCategoryId").to("direct:findByCategoryId").to("direct:includeSpecial")
-				.to("direct:findAllItems").bean(itemBean, "categoryResponse").marshal().json()
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
+		from("direct:getByCategoryId").routeId("getByCategoryId").to("direct:findByCategoryId")
+				.to("direct:includeSpecial").to("direct:findAllItems").bean(itemBean, "categoryResponse").marshal()
+				.json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Details fetched from database");
 
 		// Route to add an item
-		from("direct:addItems").unmarshal().json(JsonLibrary.Jackson, Item.class).to("bean-validator:validate")
-				.to("direct:addItemPropertyAssigning").to("direct:greaterThanZeroCheck").to("direct:findByCategoryId")
+		from("direct:addItems").routeId("addItems").unmarshal().json(JsonLibrary.Jackson, Item.class)
+				.to("bean-validator:validate").to("direct:addItemPropertyAssigning").to("direct:findByCategoryId")
 				.bean(itemBean, "dateAdding").to("direct:insertItemIntoDb").bean(itemBean, "postResponse").marshal()
 				.json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Item inserted into database");
 
 		// Route to update an item
-		from("direct:updateItems").split(simple("${body[items]}"), new UpdateResponseAggregator())
+		from("direct:updateItems").routeId("updateItems")
+				.split(simple("${body[items]}"), new UpdateResponseAggregator())
 				.to("direct:updateItemPropertyAssigning").setHeader("_id", simple("${body[_id]}"))
 				.to("direct:findByItemId")
 				.setProperty("availablestock", simple("${body[stockDetails][availableStock]}"))

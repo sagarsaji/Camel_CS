@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -21,11 +22,13 @@ public class Item {
 	private String categoryId;
 	@JsonProperty("lastUpdateDate")
 	private String lastUpdateDate;
+	@Valid
 	@JsonProperty("itemPrice")
 	private ItemPrice itemPrice;
 	@JsonProperty("stockDetails")
 	private StockDetails stockDetails;
 	@JsonProperty("specialProduct")
+	@NotNull(message = "specialProduct should not be null")
 	private Boolean specialProduct;
 	@JsonProperty("review")
 	private List<Review> review;

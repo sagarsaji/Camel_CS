@@ -2,11 +2,18 @@ package com.ust.mycart.item.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 public class StockDetails {
 
 	@JsonProperty("availableStock")
+	@NotNull(message = "availableStock should not be null")
+	@NotBlank(message = "availableStock should not be blank")
 	private int availableStock;
 	@JsonProperty("unitOfMeasure")
+	@NotNull(message = "unitOfMeasure should not be null")
+	@NotBlank(message = "unitOfMeasure should not be blank")
 	private String unitOfMeasure;
 
 	public StockDetails(int availableStock, String unitOfMeasure) {

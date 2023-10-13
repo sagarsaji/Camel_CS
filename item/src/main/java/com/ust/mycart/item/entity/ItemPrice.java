@@ -1,29 +1,34 @@
 package com.ust.mycart.item.entity;
 
+import jakarta.validation.constraints.Min;
+
 public class ItemPrice {
 
-	private int basePrice;
-	private int sellingPrice;
+	@Min(value = 1, message = "basePrice should be greater than zero")
+	private Integer basePrice;
+	@Min(value = 1, message = "sellingPrice should be greater than zero")
+	private Integer sellingPrice;
 
-	public ItemPrice(int basePrice, int sellingPrice) {
+	public ItemPrice(@Min(value = 1, message = "basePrice should be greater than zero") Integer basePrice,
+			@Min(value = 1, message = "sellingPrice should be greater than zero") Integer sellingPrice) {
 		super();
 		this.basePrice = basePrice;
 		this.sellingPrice = sellingPrice;
 	}
 
-	public int getBasePrice() {
+	public Integer getBasePrice() {
 		return basePrice;
 	}
 
-	public void setBasePrice(int basePrice) {
+	public void setBasePrice(Integer basePrice) {
 		this.basePrice = basePrice;
 	}
 
-	public int getSellingPrice() {
+	public Integer getSellingPrice() {
 		return sellingPrice;
 	}
 
-	public void setSellingPrice(int sellingPrice) {
+	public void setSellingPrice(Integer sellingPrice) {
 		this.sellingPrice = sellingPrice;
 	}
 
