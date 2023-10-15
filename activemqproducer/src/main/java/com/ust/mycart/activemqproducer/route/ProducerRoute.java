@@ -3,7 +3,6 @@ package com.ust.mycart.activemqproducer.route;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.model.dataformat.JsonLibrary;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,7 +23,7 @@ public class ProducerRoute extends RouteBuilder {
 
 		// Route that sends message to the activeMQ
 		from("direct:updateItem").routeId("producerRoute").log(LoggingLevel.DEBUG, "Received message : ${body}")
-				.log(LoggingLevel.INFO, "Message sending to activeMQ").unmarshal().json(JsonLibrary.Jackson)
+				.log(LoggingLevel.INFO, "Message sending to activeMQ").unmarshal().json()
 				.to("activemq:queue:updateItemQueue").setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200));
 
 	}

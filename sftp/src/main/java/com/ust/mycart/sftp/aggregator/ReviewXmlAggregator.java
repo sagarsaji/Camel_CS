@@ -13,7 +13,6 @@ public class ReviewXmlAggregator implements AggregationStrategy {
 
 	@Override
 	public Exchange aggregate(Exchange oldExchange, Exchange newExchange) {
-		// TODO Auto-generated method stub
 
 		Reviews review;
 

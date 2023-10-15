@@ -13,7 +13,6 @@ public class ItemTrendAggregator implements AggregationStrategy {
 
 	@Override
 	public Exchange aggregate(Exchange oldExchange, Exchange newExchange) {
-		// TODO Auto-generated method stub
 
 		Inventory inventory;
 

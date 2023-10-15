@@ -11,7 +11,7 @@ public class UpdateResponseAggregator implements AggregationStrategy {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Exchange aggregate(Exchange oldExchange, Exchange newExchange) {
-		// TODO Auto-generated method stub
+
 		List<String> workingIds;
 		String response;
 

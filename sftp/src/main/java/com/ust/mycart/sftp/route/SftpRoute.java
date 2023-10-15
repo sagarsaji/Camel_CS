@@ -18,7 +18,6 @@ import com.ust.mycart.sftp.aggregator.ListAggregator;
 import com.ust.mycart.sftp.aggregator.ReviewXmlAggregator;
 import com.ust.mycart.sftp.bean.SftpBean;
 import com.ust.mycart.sftp.entity.JsonBody;
-import com.ust.mycart.sftp.headers.HeaderClass;
 
 @Component
 public class SftpRoute extends RouteBuilder {
@@ -73,12 +72,14 @@ public class SftpRoute extends RouteBuilder {
 		from("direct:itemTrendPropertyAssigning").setProperty("recentdate", simple("${body[lastUpdateDate]}"))
 				.setProperty("messagebody", body()).setProperty("categoryid", simple("${body[categoryId]}"));
 
-		// Req 5
-		from("direct:throttle").throttle(maximumMessageCount).timePeriodMillis(timePeriod);
+		from("direct:unmarshalToJsonBody").marshal().json().unmarshal().json(JsonLibrary.Jackson, JsonBody.class);
 
 		from("direct:controlRefUpdating").bean(sftpBean, "controlRefDateUpdation")
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + controlRef + "&operation=save")
 				.log(LoggingLevel.INFO, "Date updated");
+
+		// Req 5
+		from("direct:throttle").throttle(maximumMessageCount).timePeriodMillis(timePeriod);
 
 		// Multicasting data to the three routes via cron
 		from("cron:myData?schedule=0/10 * * * * *")
@@ -86,17 +87,22 @@ public class SftpRoute extends RouteBuilder {
 				.json().multicast().parallelProcessing()
 				.to("direct:itemTrendBody", "direct:reviewBody", "direct:storeFrontBody").end();
 
-		// Handling the filtering of data based on lastUpdateDate > lastProcessDate
+		// Handling the filtering of data based on lastUpdateDate > lastProcessDate for
+		// itemTrendAnalyzer
 		from("direct:itemTrendBody").to("direct:unmarshalBody").split(body(), new ListAggregator())
 				.to("direct:recentDateProperty")
 				.setHeader(MongoDbConstants.CRITERIA, simple("{\"_id\" : \"itemTrendAnalyzer\"}"))
 				.to("direct:controlRefFindByQuery").end().to("direct:itemTrendAnalyzer");
 
+		// Handling the filtering of data based on lastUpdateDate > lastProcessDate for
+		// reviewDump
 		from("direct:reviewBody").to("direct:unmarshalBody").split(body(), new ListAggregator())
 				.to("direct:recentDateProperty")
 				.setHeader(MongoDbConstants.CRITERIA, simple("{\"_id\" : \"reviewDump\"}"))
 				.to("direct:controlRefFindByQuery").end().to("direct:reviewDump");
 
+		// Handling the filtering of data based on lastUpdateDate > lastProcessDate for
+		// storeFrontApp
 		from("direct:storeFrontBody").to("direct:unmarshalBody").split(body(), new ListAggregator())
 				.to("direct:recentDateProperty")
 				.setHeader(MongoDbConstants.CRITERIA, simple("{\"_id\" : \"storeFrontApp\"}"))
@@ -107,22 +113,22 @@ public class SftpRoute extends RouteBuilder {
 				.log(LoggingLevel.INFO, "empty").otherwise().marshal().json().to("direct:unmarshalBody")
 				.split(body(), new CategoryNameAggregator()).to("direct:itemTrendPropertyAssigning")
 				.to("direct:findByCategoryId").end().setBody(exchangeProperty("list"))
-				.split(body(), new ItemTrendAggregator()).marshal().json().unmarshal()
-				.json(JsonLibrary.Jackson, JsonBody.class).bean(sftpBean, "itemTrendAnalyzer").end().marshal()
-				.jaxb(true).to("direct:throttle").log(LoggingLevel.INFO, "Converted to XML")
+				.split(body(), new ItemTrendAggregator()).to("direct:unmarshalToJsonBody")
+				.bean(sftpBean, "itemTrendAnalyzer").end().marshal().jaxb(true).to("direct:throttle")
+				.log(LoggingLevel.INFO, "Converted to XML")
 				.setHeader(Exchange.FILE_NAME, simple("itemTrendAnalyzer_${date:now:yyyyMMdd_HHmmss}.xml"))
 				.to("ftp://{{camel.sftp.link}}/itemTrendAnalyzer?password=" + password
 						+ "&fileName=${header.CamelFileName}")
-				.setHeader(HeaderClass.CONTROL_ID, constant("itemTrendAnalyzer")).to("direct:controlRefUpdating").end();
+				.setHeader("controlId", constant("itemTrendAnalyzer")).to("direct:controlRefUpdating").end();
 
 		// Req 3 sub 2: reviewDump.xml
 		from("direct:reviewDump").routeId("reviewDump").choice().when(simple("${body.size()} == 0"))
-				.log(LoggingLevel.INFO, "empty").otherwise().split(body(), new ReviewXmlAggregator()).marshal().json()
-				.unmarshal().json(JsonLibrary.Jackson, JsonBody.class).bean(sftpBean, "reviewDump").end().marshal()
-				.jaxb(true).to("direct:throttle").log(LoggingLevel.INFO, "Converted to XML")
+				.log(LoggingLevel.INFO, "empty").otherwise().split(body(), new ReviewXmlAggregator())
+				.to("direct:unmarshalToJsonBody").bean(sftpBean, "reviewDump").end().marshal().jaxb(true)
+				.to("direct:throttle").log(LoggingLevel.INFO, "Converted to XML")
 				.setHeader(Exchange.FILE_NAME, simple("reviewDump_${date:now:yyyyMMdd_HHmmss}.xml"))
 				.to("ftp://{{camel.sftp.link}}/reviewDump?password=" + password + "&fileName=${header.CamelFileName}")
-				.setHeader(HeaderClass.CONTROL_ID, constant("reviewDump")).to("direct:controlRefUpdating").end();
+				.setHeader("controlId", constant("reviewDump")).to("direct:controlRefUpdating").end();
 
 		// Req 3 sub 3: storeFrontApp.json
 		from("direct:storeFrontApp").routeId("storeFrontApp").choice().when(simple("${body.size()} == 0"))
@@ -134,7 +140,7 @@ public class SftpRoute extends RouteBuilder {
 				.setHeader(Exchange.FILE_NAME, simple("storeFrontApp_${date:now:yyyyMMdd_HHmmss}.json"))
 				.to("ftp://{{camel.sftp.link}}/storeFrontApp?password=" + password
 						+ "&fileName=${header.CamelFileName}")
-				.setHeader(HeaderClass.CONTROL_ID, constant("storeFrontApp")).to("direct:controlRefUpdating").end();
+				.setHeader("controlId", constant("storeFrontApp")).to("direct:controlRefUpdating").end();
 
 	}
 }

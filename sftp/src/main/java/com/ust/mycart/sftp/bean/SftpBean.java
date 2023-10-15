@@ -71,8 +71,6 @@ public class SftpBean {
 
 		review.getItems().add(item);
 
-		exchange.setProperty("reviewxml", review);
-		exchange.getIn().setBody(review);
 	}
 
 	public void jsonResponse(Exchange exchange, @ExchangeProperty("messagebody") JsonBody jsonResponse,

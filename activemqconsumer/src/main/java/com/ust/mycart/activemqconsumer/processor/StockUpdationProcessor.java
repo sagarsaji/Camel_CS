@@ -14,7 +14,6 @@ public class StockUpdationProcessor implements Processor {
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
-		// TODO Auto-generated method stub
 
 		Document item = exchange.getIn().getBody(Document.class);
 		Document stockdetails = (Document) item.get("stockDetails");
