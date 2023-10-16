@@ -69,8 +69,6 @@ public class SftpBean {
 
 		exchange.setProperty("items", item);
 
-		review.getItems().add(item);
-
 	}
 
 	public void jsonResponse(Exchange exchange, @ExchangeProperty("messagebody") JsonBody jsonResponse,

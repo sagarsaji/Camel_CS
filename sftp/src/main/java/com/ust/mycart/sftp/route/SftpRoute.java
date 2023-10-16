@@ -49,98 +49,146 @@ public class SftpRoute extends RouteBuilder {
 	@Override
 	public void configure() throws Exception {
 
-		// Handled exceptions here
+		/**
+		 * Global Exception Throwable.class handled here
+		 */
 		onException(Throwable.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
-				.setHeader(Exchange.CONTENT_TYPE, constant("application/json")).log("${exception.message}")
-				.setBody(constant("{\"message\":\"{{error.internalServerError}}\"}"));
+				.setHeader(Exchange.CONTENT_TYPE, constant("application/json")).log("${exception.message}");
 
+		/**
+		 * Route that multicast's data to the three routes using parallel processing via
+		 * cron which sends data every 10 seconds
+		 */
+		from("cron:myData?schedule=0/10 * * * * *")
+				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findAll").marshal()
+				.json().multicast().parallelProcessing()
+				.to("direct:itemTrendBody", "direct:reviewBody", "direct:storeFrontBody").end();
+
+		/**
+		 * Handling the filtering of data based on lastUpdateDate > lastProcessDate for
+		 * itemTrendAnalyzer.xml
+		 */
+		from("direct:itemTrendBody").to("direct:unmarshalBody").split(body(), new ListAggregator())
+				.to("direct:recentDateProperty")
+				.setHeader(MongoDbConstants.CRITERIA, simple("{\"_id\" : \"itemTrendAnalyzer\"}"))
+				.to("direct:controlRefFindByQuery").end().to("direct:itemTrendAnalyzer");
+
+		/**
+		 * Route to fetch the lastUpdateDate from the body and convert it into Date type
+		 */
 		from("direct:recentDateProperty").setProperty("listbody", body())
 				.setProperty("recentDate", simple("${body[lastUpdateDate]}")).bean(sftpBean, "recentDate");
 
-		from("direct:unmarshalBody").unmarshal().json(JsonLibrary.Jackson, List.class).setProperty("list", body());
-
+		/**
+		 * Fetching lastProcessDate from controlRef collection and checking if
+		 * lastUpdateDate > lastProcessDate
+		 */
 		from("direct:controlRefFindByQuery")
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + controlRef + "&operation=findOneByQuery")
 				.setProperty("controlrefdate", simple("${body[date]}")).choice()
 				.when(exchangeProperty("recentDateNew").isGreaterThan(exchangeProperty("controlrefdate")))
 				.setProperty("messagebody", exchangeProperty("listbody")).end();
 
+		/**
+		 * Req 3 sub 1: itemTrendAnalyzer.xml
+		 */
+		from("direct:itemTrendAnalyzer").routeId("itemTrendAnalyzer").setHeader("routeid", simple("${routeId}"))
+				.choice().when(simple("${body.size()} == 0")).log(LoggingLevel.INFO, "No record processed").otherwise()
+				.marshal().json().to("direct:unmarshalBody").split(body(), new CategoryNameAggregator())
+				.to("direct:itemTrendPropertyAssigning").to("direct:findByCategoryId").end()
+				.setBody(exchangeProperty("list")).split(body(), new ItemTrendAggregator())
+				.to("direct:unmarshalToJsonBody").bean(sftpBean, "itemTrendAnalyzer").end().to("direct:marshalToJaxb")
+				.log(LoggingLevel.INFO, "Converted to XML").to("direct:saveFileAndUpdateDate").end();
+
+		/**
+		 * Route to unmarshal body to type List.class
+		 */
+		from("direct:unmarshalBody").unmarshal().json(JsonLibrary.Jackson, List.class).setProperty("list", body());
+
+		/**
+		 * Route to assign properties for lastUpdateDate , each body from the list,
+		 * category id from the message
+		 */
+		from("direct:itemTrendPropertyAssigning").setProperty("recentdate", simple("${body[lastUpdateDate]}"))
+				.setProperty("messagebody", body()).setProperty("categoryid", simple("${body[categoryId]}"));
+
+		/**
+		 * Route which invokes MongoDB findById operation to fetch details from category
+		 * collection and assign property for category name
+		 */
 		from("direct:findByCategoryId").setBody(exchangeProperty("categoryid"))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + category + "&operation=findById")
 				.setProperty("categoryname", simple("${body[categoryName]}"));
 
-		from("direct:itemTrendPropertyAssigning").setProperty("recentdate", simple("${body[lastUpdateDate]}"))
-				.setProperty("messagebody", body()).setProperty("categoryid", simple("${body[categoryId]}"));
-
+		/**
+		 * Route to unmarshal body to type JsonBody.class
+		 */
 		from("direct:unmarshalToJsonBody").marshal().json().unmarshal().json(JsonLibrary.Jackson, JsonBody.class);
 
-		from("direct:controlRefUpdating").bean(sftpBean, "controlRefDateUpdation")
+		/**
+		 * Req 5: Route to send specified number of messages in a specified time period
+		 */
+		from("direct:throttle").throttle(maximumMessageCount).timePeriodMillis(timePeriod);
+
+		/**
+		 * Marshal to jaxb and do requirement 5
+		 */
+		from("direct:marshalToJaxb").marshal().jaxb(true).to("direct:throttle");
+
+		/**
+		 * Route to update lastProcessDate in controlRef collection
+		 */
+		from("direct:controlRefUpdating").routeId("lastProcessDate").bean(sftpBean, "controlRefDateUpdation")
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + controlRef + "&operation=save")
 				.log(LoggingLevel.INFO, "Date updated");
 
-		// Req 5
-		from("direct:throttle").throttle(maximumMessageCount).timePeriodMillis(timePeriod);
+		/**
+		 * Route to save file into SFTP folder and update lastProcessDate in controlRef
+		 * collection
+		 */
+		from("direct:saveFileAndUpdateDate")
+				.setHeader(Exchange.FILE_NAME, simple("${header.routeid}_${date:now:yyyyMMdd_HHmmss}"))
+				.toD("ftp://{{camel.sftp.link}}/${header.routeid}?password=" + password
+						+ "&fileName=${header.CamelFileName}")
+				.setHeader("controlId", header("routeid")).to("direct:controlRefUpdating");
 
-		// Multicasting data to the three routes via cron
-		from("cron:myData?schedule=0/10 * * * * *")
-				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findAll").marshal()
-				.json().multicast().parallelProcessing()
-				.to("direct:itemTrendBody", "direct:reviewBody", "direct:storeFrontBody").end();
-
-		// Handling the filtering of data based on lastUpdateDate > lastProcessDate for
-		// itemTrendAnalyzer
-		from("direct:itemTrendBody").to("direct:unmarshalBody").split(body(), new ListAggregator())
-				.to("direct:recentDateProperty")
-				.setHeader(MongoDbConstants.CRITERIA, simple("{\"_id\" : \"itemTrendAnalyzer\"}"))
-				.to("direct:controlRefFindByQuery").end().to("direct:itemTrendAnalyzer");
-
-		// Handling the filtering of data based on lastUpdateDate > lastProcessDate for
-		// reviewDump
+		/**
+		 * Handling the filtering of data based on lastUpdateDate > lastProcessDate for
+		 * reviewDump.xml
+		 */
 		from("direct:reviewBody").to("direct:unmarshalBody").split(body(), new ListAggregator())
 				.to("direct:recentDateProperty")
 				.setHeader(MongoDbConstants.CRITERIA, simple("{\"_id\" : \"reviewDump\"}"))
 				.to("direct:controlRefFindByQuery").end().to("direct:reviewDump");
 
-		// Handling the filtering of data based on lastUpdateDate > lastProcessDate for
-		// storeFrontApp
+		/**
+		 * Req 3 sub 2: reviewDump.xml
+		 */
+		from("direct:reviewDump").routeId("reviewDump").setHeader("routeid", simple("${routeId}")).choice()
+				.when(simple("${body.size()} == 0")).log(LoggingLevel.INFO, "No record processed").otherwise()
+				.split(body(), new ReviewXmlAggregator()).to("direct:unmarshalToJsonBody").bean(sftpBean, "reviewDump")
+				.end().to("direct:marshalToJaxb").log(LoggingLevel.INFO, "Converted to XML")
+				.to("direct:saveFileAndUpdateDate").end();
+
+		/**
+		 * Handling the filtering of data based on lastUpdateDate > lastProcessDate for
+		 * storeFrontApp.json
+		 */
 		from("direct:storeFrontBody").to("direct:unmarshalBody").split(body(), new ListAggregator())
 				.to("direct:recentDateProperty")
 				.setHeader(MongoDbConstants.CRITERIA, simple("{\"_id\" : \"storeFrontApp\"}"))
 				.to("direct:controlRefFindByQuery").end().to("direct:storeFrontApp");
 
-		// Req 3 sub 1: itemTrendAnalyzer.xml
-		from("direct:itemTrendAnalyzer").routeId("itemTrendAnalyzer").choice().when(simple("${body.size()} == 0"))
-				.log(LoggingLevel.INFO, "empty").otherwise().marshal().json().to("direct:unmarshalBody")
-				.split(body(), new CategoryNameAggregator()).to("direct:itemTrendPropertyAssigning")
-				.to("direct:findByCategoryId").end().setBody(exchangeProperty("list"))
-				.split(body(), new ItemTrendAggregator()).to("direct:unmarshalToJsonBody")
-				.bean(sftpBean, "itemTrendAnalyzer").end().marshal().jaxb(true).to("direct:throttle")
-				.log(LoggingLevel.INFO, "Converted to XML")
-				.setHeader(Exchange.FILE_NAME, simple("itemTrendAnalyzer_${date:now:yyyyMMdd_HHmmss}.xml"))
-				.to("ftp://{{camel.sftp.link}}/itemTrendAnalyzer?password=" + password
-						+ "&fileName=${header.CamelFileName}")
-				.setHeader("controlId", constant("itemTrendAnalyzer")).to("direct:controlRefUpdating").end();
-
-		// Req 3 sub 2: reviewDump.xml
-		from("direct:reviewDump").routeId("reviewDump").choice().when(simple("${body.size()} == 0"))
-				.log(LoggingLevel.INFO, "empty").otherwise().split(body(), new ReviewXmlAggregator())
-				.to("direct:unmarshalToJsonBody").bean(sftpBean, "reviewDump").end().marshal().jaxb(true)
-				.to("direct:throttle").log(LoggingLevel.INFO, "Converted to XML")
-				.setHeader(Exchange.FILE_NAME, simple("reviewDump_${date:now:yyyyMMdd_HHmmss}.xml"))
-				.to("ftp://{{camel.sftp.link}}/reviewDump?password=" + password + "&fileName=${header.CamelFileName}")
-				.setHeader("controlId", constant("reviewDump")).to("direct:controlRefUpdating").end();
-
-		// Req 3 sub 3: storeFrontApp.json
-		from("direct:storeFrontApp").routeId("storeFrontApp").choice().when(simple("${body.size()} == 0"))
-				.log(LoggingLevel.INFO, "empty").otherwise().split(body(), new JsonBodyAggregator()).unmarshal()
-				.json(JsonLibrary.Jackson, JsonBody.class).setProperty("messagebody", body())
-				.setProperty("categoryid", simple("${body.categoryId}")).to("direct:findByCategoryId")
-				.bean(sftpBean, "jsonResponse").end().marshal().json(JsonLibrary.Jackson, true).to("direct:throttle")
-				.log(LoggingLevel.INFO, "Converted to JSON")
-				.setHeader(Exchange.FILE_NAME, simple("storeFrontApp_${date:now:yyyyMMdd_HHmmss}.json"))
-				.to("ftp://{{camel.sftp.link}}/storeFrontApp?password=" + password
-						+ "&fileName=${header.CamelFileName}")
-				.setHeader("controlId", constant("storeFrontApp")).to("direct:controlRefUpdating").end();
+		/**
+		 * Req 3 sub 3: storeFrontApp.json
+		 */
+		from("direct:storeFrontApp").routeId("storeFrontApp").setHeader("routeid", simple("${routeId}")).choice()
+				.when(simple("${body.size()} == 0")).log(LoggingLevel.INFO, "No record processed").otherwise()
+				.split(body(), new JsonBodyAggregator()).unmarshal().json(JsonLibrary.Jackson, JsonBody.class)
+				.setProperty("messagebody", body()).setProperty("categoryid", simple("${body.categoryId}"))
+				.to("direct:findByCategoryId").bean(sftpBean, "jsonResponse").end().marshal()
+				.json(JsonLibrary.Jackson, true).to("direct:throttle").log(LoggingLevel.INFO, "Converted to JSON")
+				.to("direct:saveFileAndUpdateDate").end();
 
 	}
 }

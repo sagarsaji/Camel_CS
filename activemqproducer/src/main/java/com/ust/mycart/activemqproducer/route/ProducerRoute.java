@@ -11,17 +11,25 @@ public class ProducerRoute extends RouteBuilder {
 	@Override
 	public void configure() throws Exception {
 
-		// Handled exception here
+		/**
+		 * Global Exception Throwable.class handled here
+		 */
 		onException(Throwable.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
 				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 				.setBody(constant("{\"message\":\"{{server.internalServerError}}\"}"));
 
-		// REST Entry Point
+		/**
+		 * REST Entry Point
+		 */
 		rest()
-				// API to update item and send to activeMQ
+				/**
+				 * API to send the message to activeMQ and then updates the item
+				 */
 				.put("/item").to("direct:updateItem");
 
-		// Route that sends message to the activeMQ
+		/**
+		 * Req 2: API Route that sends message to activeMQ and then updates the item
+		 */
 		from("direct:updateItem").routeId("producerRoute").log(LoggingLevel.DEBUG, "Received message : ${body}")
 				.log(LoggingLevel.INFO, "Message sending to activeMQ").unmarshal().json()
 				.to("activemq:queue:updateItemQueue").setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200));

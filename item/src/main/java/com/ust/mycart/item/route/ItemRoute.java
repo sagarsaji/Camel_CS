@@ -44,10 +44,14 @@ public class ItemRoute extends RouteBuilder {
 	@Override
 	public void configure() throws Exception {
 
-		// Handled exception here
+		/**
+		 * All Exceptions handled here
+		 */
 		onException(ItemException.class).handled(true).setHeader(Exchange.CONTENT_TYPE, constant("application/json"));
 
-		// Req 6 MongoDbException handled
+		/**
+		 * Req 6: MongoDbException handled here
+		 */
 		onException(CamelMongoDbException.class).log(LoggingLevel.INFO, "Mongo Retry...")
 				.maximumRedeliveries(maximumRedeliveries).redeliveryDelay(redeliveryDelay)
 				.backOffMultiplier(backOffMultiplier).handled(true)
@@ -55,24 +59,51 @@ public class ItemRoute extends RouteBuilder {
 				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 				.setBody(constant("{\"message\":\"{{error.camelMongoDbException}}\"}"));
 
+		/**
+		 * Global Exception Throwable.class handled here
+		 */
 		onException(Throwable.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
 				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 				.setBody(simple("{\"message\":\"${exception.message}\"}"));
 
-		// REST entry points
+		/**
+		 * REST entry points
+		 */
 		rest()
-				// API to access item by item id
+				/**
+				 * API to access details by item id
+				 */
 				.get("/items/{_id}").to("direct:getItemsById")
 
-				// API to access item by category id and include a filter
+				/**
+				 * API to access details by category id and also accepts a filter named
+				 * includeSpecial
+				 */
 				.get("/category/{category_id}").to("direct:getByCategoryId")
 
-				// API to add an item
+				/**
+				 * API to add an item
+				 */
 				.post("/item").to("direct:addItems")
 
-				// API to update an item
+				/**
+				 * API to update an item
+				 */
 				.put("/item").to("direct:updateItems");
 
+		/**
+		 * Req 1 sub 1: API Route to access details by item id
+		 */
+		from("direct:getItemsById").routeId("getItemsById").to("direct:findByItemId").marshal().json().unmarshal()
+				.json(JsonLibrary.Jackson, Item.class).setProperty("messagebody", body())
+				.setHeader("category_id", simple("${body.categoryId}")).to("direct:findByCategoryId")
+				.bean(itemBean, "postResponse").marshal().json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
+				.log(LoggingLevel.INFO, "Item fetched from database");
+
+		/**
+		 * Route to check if the entered item id is present in the item collection or
+		 * not
+		 */
 		from("direct:findByItemId").setBody(header("_id"))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
 				.when(body().isNull()).log(LoggingLevel.INFO, "Item not found for id : ${header._id}")
@@ -81,6 +112,10 @@ public class ItemRoute extends RouteBuilder {
 				.throwException(new ItemException("not found")).otherwise()
 				.log(LoggingLevel.INFO, "Item found for id : ${header._id}").end();
 
+		/**
+		 * Route to check if the entered category id is present in the category
+		 * collection or not
+		 */
 		from("direct:findByCategoryId").setBody(header("category_id"))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + category + "&operation=findById")
 				.choice().when(body().isNull()).log(LoggingLevel.INFO, "Category ${header.category_id} not found")
@@ -90,58 +125,79 @@ public class ItemRoute extends RouteBuilder {
 				.setProperty("categoryname", simple("${body[categoryName]}"))
 				.setProperty("categorydept", simple("${body[categoryDep]}")).end();
 
+		/**
+		 * Req 1 sub 2: API Route to access details by category id and also accepts a
+		 * filter named includeSpecial
+		 */
+		from("direct:getByCategoryId").routeId("getByCategoryId").to("direct:findByCategoryId")
+				.to("direct:includeSpecial").to("direct:findAllItems").bean(itemBean, "categoryResponse").marshal()
+				.json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
+				.log(LoggingLevel.INFO, "Details fetched from database");
+
+		/**
+		 * Route to check includeSpecial query parameter condition
+		 */
 		from("direct:includeSpecial").choice().when(header("includeSpecial").isEqualTo("false"))
 				.setHeader(MongoDbConstants.CRITERIA,
 						simple("{\"categoryId\": '${header.category_id}',\"specialProduct\": false}"))
 				.otherwise().setHeader(MongoDbConstants.CRITERIA, simple("{\"categoryId\": '${header.category_id}'}"))
 				.end();
 
+		/**
+		 * Route which invokes MongoDB operation to fetch all the items from the item
+		 * collection
+		 */
 		from("direct:findAllItems")
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findAll");
 
-		from("direct:addItemPropertyAssigning").setHeader("category_id", simple("${body.categoryId}"))
-				.setProperty("baseprice", simple("${body.itemPrice.basePrice}"))
-				.setProperty("sellingprice", simple("${body.itemPrice.sellingPrice}"))
-				.setProperty("messagebody", body());
-
-		from("direct:insertItemIntoDb")
-				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=insert");
-
-		from("direct:updateItemInDb")
-				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=save");
-
-		from("direct:updateItemPropertyAssigning").setProperty("soldout", simple("${body[stockDetails][soldOut]}"))
-				.setProperty("damaged", simple("${body[stockDetails][damaged]}"));
-
-		// Route to access item by item id
-		from("direct:getItemsById").routeId("getItemsById").to("direct:findByItemId").marshal().json().unmarshal()
-				.json(JsonLibrary.Jackson, Item.class).setProperty("messagebody", body())
-				.setHeader("category_id", simple("${body.categoryId}")).to("direct:findByCategoryId")
-				.bean(itemBean, "postResponse").marshal().json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
-				.log(LoggingLevel.INFO, "Item fetched from database");
-
-		// Route to access item by category id and include a filter
-		from("direct:getByCategoryId").routeId("getByCategoryId").to("direct:findByCategoryId")
-				.to("direct:includeSpecial").to("direct:findAllItems").bean(itemBean, "categoryResponse").marshal()
-				.json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
-				.log(LoggingLevel.INFO, "Details fetched from database");
-
-		// Route to add an item
+		/**
+		 * Req 1 sub 3: API Route to add an item
+		 */
 		from("direct:addItems").routeId("addItems").unmarshal().json(JsonLibrary.Jackson, Item.class)
 				.to("bean-validator:validate").to("direct:addItemPropertyAssigning").to("direct:findByCategoryId")
 				.bean(itemBean, "dateAdding").to("direct:insertItemIntoDb").bean(itemBean, "postResponse").marshal()
 				.json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Item inserted into database");
 
-		// Route to update an item
+		/**
+		 * Route to assign properties for Base Price, Selling Price and the list data
+		 */
+		from("direct:addItemPropertyAssigning").setHeader("category_id", simple("${body.categoryId}"))
+				.setProperty("baseprice", simple("${body.itemPrice.basePrice}"))
+				.setProperty("sellingprice", simple("${body.itemPrice.sellingPrice}"))
+				.setProperty("messagebody", body());
+
+		/**
+		 * Route which invokes MongoDB operation to insert a new item into the item
+		 * collection
+		 */
+		from("direct:insertItemIntoDb")
+				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=insert");
+
+		/**
+		 * Req 1 sub 4: API Route to update an item
+		 */
 		from("direct:updateItems").routeId("updateItems")
 				.split(simple("${body[items]}"), new UpdateResponseAggregator())
 				.to("direct:updateItemPropertyAssigning").setHeader("_id", simple("${body[_id]}"))
 				.to("direct:findByItemId")
 				.setProperty("availablestock", simple("${body[stockDetails][availableStock]}"))
-				.bean(itemBean, "stockUpdation").to("direct:updateItemInDb")
-				.setProperty("workingId", simple("${header._id}")).end()
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200));
+				.bean(itemBean, "stockUpdation").to("direct:updateItemInDb").setProperty("workingId", header("_id"))
+				.end().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200));
+
+		/**
+		 * Route to assign properties for soldout and damaged
+		 */
+		from("direct:updateItemPropertyAssigning").setProperty("soldout", simple("${body[stockDetails][soldOut]}"))
+				.setProperty("damaged", simple("${body[stockDetails][damaged]}"));
+
+		/**
+		 * Route which invokes MongoDB operation to update the item in the item
+		 * collection
+		 */
+		from("direct:updateItemInDb")
+				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=save");
+
 	}
 
 }
