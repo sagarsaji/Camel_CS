@@ -9,8 +9,8 @@ import org.bson.Document;
 
 public class StockUpdationProcessor implements Processor {
 
-	private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-	private static LocalDateTime currentDateTime;
+	private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	private static LocalDateTime CURRENT_DATE_TIME;
 
 	@Override
 	public void process(Exchange exchange) throws Exception {
@@ -23,9 +23,9 @@ public class StockUpdationProcessor implements Processor {
 		int damage = exchange.getProperty("damaged", Integer.class);
 		int available = exchange.getProperty("availablestock", Integer.class);
 
-		currentDateTime = LocalDateTime.now();
+		CURRENT_DATE_TIME = LocalDateTime.now();
 
-		lastupdatedate = currentDateTime.format(formatter);
+		lastupdatedate = CURRENT_DATE_TIME.format(FORMATTER);
 
 		available = available - soldout - damage;
 

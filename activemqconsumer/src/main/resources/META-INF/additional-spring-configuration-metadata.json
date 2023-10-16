@@ -18,5 +18,25 @@
     "name": "camel.mongodb.collection1",
     "type": "java.lang.String",
     "description": "A description for 'camel.mongodb.collection1'"
+  },
+  {
+    "name": "camel.maximumRedeliveries",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.maximumRedeliveries'"
+  },
+  {
+    "name": "camel.redeliveryDelay",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.redeliveryDelay'"
+  },
+  {
+    "name": "camel.backOffMultiplier",
+    "type": "java.lang.String",
+    "description": "A description for 'camel.backOffMultiplier'"
+  },
+  {
+    "name": "error.camelMongoDbException",
+    "type": "java.lang.String",
+    "description": "A description for 'error.camelMongoDbException'"
   }
 ]}

@@ -50,14 +50,13 @@ public class ItemRoute extends RouteBuilder {
 		onException(ItemException.class).handled(true).setHeader(Exchange.CONTENT_TYPE, constant("application/json"));
 
 		/**
-		 * Req 6: MongoDbException handled here
+		 * Req 6: MongoDbException handled here: time =
+		 * redeliveryDelay*(backOffMultiplier^(retryAttempt - 1))
 		 */
-		onException(CamelMongoDbException.class).log(LoggingLevel.INFO, "Mongo Retry...")
-				.maximumRedeliveries(maximumRedeliveries).redeliveryDelay(redeliveryDelay)
-				.backOffMultiplier(backOffMultiplier).handled(true)
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
-				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
-				.setBody(constant("{\"message\":\"{{error.camelMongoDbException}}\"}"));
+//		onException(CamelMongoDbException.class).log(LoggingLevel.INFO, "Mongo Retry...").routeId("CamelMongoDbException")
+//				.maximumRedeliveries(maximumRedeliveries).redeliveryDelay(redeliveryDelay)
+//				.backOffMultiplier(backOffMultiplier).useExponentialBackOff()
+//				.handled(true).log(LoggingLevel.ERROR, "${exception.message}");
 
 		/**
 		 * Global Exception Throwable.class handled here

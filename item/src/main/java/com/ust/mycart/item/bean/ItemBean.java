@@ -17,8 +17,8 @@ import com.ust.mycart.item.entity.Response;
 @Component
 public class ItemBean {
 
-	private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-	private static LocalDateTime currentDateTime = LocalDateTime.now();
+	private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	private static LocalDateTime CURRENT_DATE_TIME;
 
 	public void postResponse(Exchange exchange, @ExchangeProperty("categoryname") String categoryname,
 			@ExchangeProperty("messagebody") Item item) {
@@ -50,8 +50,8 @@ public class ItemBean {
 
 	public void dateAdding(Exchange exchange, @ExchangeProperty("messagebody") Item item) {
 
-		currentDateTime = LocalDateTime.now();
-		String date = currentDateTime.format(formatter);
+		CURRENT_DATE_TIME = LocalDateTime.now();
+		String date = CURRENT_DATE_TIME.format(FORMATTER);
 		item.setLastUpdateDate(date);
 
 		exchange.getIn().setBody(item);
@@ -64,9 +64,9 @@ public class ItemBean {
 		Document stockdetails = (Document) item.get("stockDetails");
 		String lastupdatedate = (String) item.get("lastUpdateDate");
 
-		currentDateTime = LocalDateTime.now();
+		CURRENT_DATE_TIME = LocalDateTime.now();
 
-		lastupdatedate = currentDateTime.format(formatter);
+		lastupdatedate = CURRENT_DATE_TIME.format(FORMATTER);
 
 		available = available - soldout - damage;
 

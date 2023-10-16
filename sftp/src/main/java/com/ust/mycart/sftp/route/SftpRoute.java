@@ -5,6 +5,7 @@ import java.util.List;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.mongodb.CamelMongoDbException;
 import org.apache.camel.component.mongodb.MongoDbConstants;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,8 +47,26 @@ public class SftpRoute extends RouteBuilder {
 	@Value("${camel.sftp.password}")
 	private String password;
 
+	@Value("${camel.maximumRedeliveries}")
+	private int maximumRedeliveries;
+
+	@Value("${camel.redeliveryDelay}")
+	private int redeliveryDelay;
+
+	@Value("${camel.backOffMultiplier}")
+	private int backOffMultiplier;
+
 	@Override
 	public void configure() throws Exception {
+
+		/**
+		 * Req 6: MongoDbException handled here: time =
+		 * redeliveryDelay*(backOffMultiplier^(retryAttempt - 1))
+		 */
+		onException(CamelMongoDbException.class).routeId("CamelMongoDbException")
+				.maximumRedeliveries(maximumRedeliveries).redeliveryDelay(redeliveryDelay)
+				.backOffMultiplier(backOffMultiplier).useExponentialBackOff().handled(true)
+				.log(LoggingLevel.ERROR, "${exception.message}");
 
 		/**
 		 * Global Exception Throwable.class handled here
