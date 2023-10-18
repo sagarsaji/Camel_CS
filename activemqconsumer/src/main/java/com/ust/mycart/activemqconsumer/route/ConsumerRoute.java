@@ -6,7 +6,8 @@ import org.apache.camel.component.mongodb.CamelMongoDbException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.ust.mycart.activemqconsumer.aggregator.UpdateResponseAggregator;
+import com.ust.mycart.activemqconsumer.constant.ApplicationConstant;
+import com.ust.mycart.activemqconsumer.constant.ConstantClass;
 import com.ust.mycart.activemqconsumer.processor.StockUpdationProcessor;
 
 @Component
@@ -47,24 +48,25 @@ public class ConsumerRoute extends RouteBuilder {
 		/**
 		 * Route that consumes message from activeMQ and does the update operation
 		 */
-		from("activemq:queue:updateItemQueue").log(LoggingLevel.INFO, "Message received from ActiveMQ")
-				.split(simple("${body[items]}"), new UpdateResponseAggregator()).to("direct:updateItemPropertyAdding")
-				.setHeader("itemid", simple("${body[_id]}")).to("direct:findByItemId")
-				.setProperty("availablestock", simple("${body[stockDetails][availableStock]}"))
-				.process(new StockUpdationProcessor()).to("direct:updateItemInDb")
-				.setProperty("workingId", header("itemid")).end();
+		from(ApplicationConstant.ACTIVEMQ_UPDATE_ITEM_QUEUE).routeId(ConstantClass.CONSUMER_ROUTE)
+				.log(LoggingLevel.INFO, "Message received from ActiveMQ")
+				.to(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
+				.setHeader(ConstantClass.ITEM_ID, simple("${body[_id]}")).to(ApplicationConstant.FIND_BY_ITEM_ID)
+				.setProperty(ConstantClass.AVAILABLE_STOCK, simple("${body[stockDetails][availableStock]}"))
+				.process(new StockUpdationProcessor()).to(ApplicationConstant.UPDATE_ITEM_IN_DB);
 
 		/**
 		 * Route to assign properties for soldout and damaged
 		 */
-		from("direct:updateItemPropertyAdding").setProperty("soldout", simple("${body[stockDetails][soldOut]}"))
-				.setProperty("damaged", simple("${body[stockDetails][damaged]}"));
+		from(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
+				.setProperty(ConstantClass.SOLDOUT, simple("${body[stockDetails][soldOut]}"))
+				.setProperty(ConstantClass.DAMAGED, simple("${body[stockDetails][damaged]}"));
 
 		/**
 		 * Route to check if the entered item id is present in the item collection or
 		 * not
 		 */
-		from("direct:findByItemId").setBody(header("itemid"))
+		from(ApplicationConstant.FIND_BY_ITEM_ID).setBody(header(ConstantClass.ITEM_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
 				.when(body().isNull()).log(LoggingLevel.INFO, "Item not found for id : ${header.itemid}").otherwise()
 				.log(LoggingLevel.INFO, "Item found for id : ${header.itemid}").end();
@@ -73,7 +75,7 @@ public class ConsumerRoute extends RouteBuilder {
 		 * Route which invokes MongoDB operation to update the item in the item
 		 * collection
 		 */
-		from("direct:updateItemInDb")
+		from(ApplicationConstant.UPDATE_ITEM_IN_DB)
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=save");
 
 	}

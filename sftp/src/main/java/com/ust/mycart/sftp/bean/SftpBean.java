@@ -1,16 +1,17 @@
 package com.ust.mycart.sftp.bean;
 
-import java.text.SimpleDateFormat;
-
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.camel.Body;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangeProperty;
-import org.apache.camel.Header;
+import org.apache.camel.component.mongodb.MongoDbConstants;
 import org.springframework.stereotype.Component;
 
 import com.ust.mycart.sftp.entity.JsonBody;
@@ -18,23 +19,28 @@ import com.ust.mycart.sftp.entity.JsonResponse;
 import com.ust.mycart.sftp.inventory.Category;
 import com.ust.mycart.sftp.inventory.Item;
 import com.ust.mycart.sftp.review.ItemReview;
-import com.ust.mycart.sftp.review.Reviews;
+import com.ust.mycart.sftp.review.Review;
 
 @Component
 public class SftpBean {
 
-	public void recentDate(Exchange exchange, @ExchangeProperty("recentDate") String lastdate) throws Exception {
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		Date lastupdatedate = dateFormat.parse(lastdate);
-		exchange.setProperty("recentDateNew", lastupdatedate);
-	}
+	private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	private static LocalDateTime CURRENT_DATE_TIME;
 
-	public void controlRefDateUpdation(Exchange exchange, @Header("controlId") String id) {
+	public void controlRefDateUpdation(Exchange exchange) {
 
-		Map<String, Object> map = new HashMap<>();
-		map.put("_id", id);
-		map.put("date", new Date());
-		exchange.getIn().setBody(map);
+		CURRENT_DATE_TIME = LocalDateTime.now();
+		String date = CURRENT_DATE_TIME.format(FORMATTER);
+
+		Map<String, Object> filter = new HashMap<>();
+		filter.put("_id", "controlRef");
+
+		Map<String, Object> updateFields = new HashMap<>();
+		updateFields.put("$set", Collections.singletonMap("date", date));
+
+		exchange.getMessage().setHeader(MongoDbConstants.CRITERIA, filter);
+		exchange.getMessage().setHeader(MongoDbConstants.MULTIUPDATE, false);
+		exchange.getMessage().setBody(updateFields);
 	}
 
 	public void itemTrendAnalyzer(Exchange exchange, @ExchangeProperty("categoryMap") Map<String, String> categoryMap,
@@ -55,17 +61,22 @@ public class SftpBean {
 		exchange.setProperty("category", category);
 	}
 
-	public void reviewDump(Exchange exchange, @Body JsonBody response, @Body Reviews review) {
-
-		if (review == null) {
-			review = new Reviews();
-			review.setItems(new ArrayList<>());
-		}
+	public void reviewDump(Exchange exchange, @Body JsonBody response) {
 
 		ItemReview item = new ItemReview();
 
 		item.setId(response.get_id());
-		item.setReview(response.getReview());
+
+		if (response.getReview() == null) {
+			List<Review> responselist = new ArrayList<>();
+			Review reviews = new Review();
+			reviews.setRating("null");
+			reviews.setComment("null");
+			responselist.add(reviews);
+			item.setReview(responselist);
+		} else {
+			item.setReview(response.getReview());
+		}
 
 		exchange.setProperty("items", item);
 
