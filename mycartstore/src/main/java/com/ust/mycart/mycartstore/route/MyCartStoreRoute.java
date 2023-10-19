@@ -39,16 +39,20 @@ public class MyCartStoreRoute extends RouteBuilder {
 		/**
 		 * API Route to fetch details by item id from GET service of Req 1 sub 1
 		 */
-		from(ApplicationConstant.GET_BY_ITEM_ID).routeId(ConstantClass.FIND_BY_ID)
-				.toD("{{camel.getByItemId}}/${header._id}?bridgeEndpoint=true")
-				.log(LoggingLevel.DEBUG, "Message received : ${body}").log(LoggingLevel.INFO, "item fetched");
+		from(ApplicationConstant.GET_BY_ITEM_ID).routeId(ConstantClass.FIND_BY_ID).toD(
+				"http://localhost:9090/mycart/items/${header._id}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+				.choice().when(body().isEqualTo("{\"message\":\"Item Not Found\"}")).unmarshal().json()
+				.log(LoggingLevel.ERROR, "${body[message]}").marshal().json().stop().otherwise()
+				.log(LoggingLevel.DEBUG, "Message received : ${body}").log(LoggingLevel.INFO, "Details fetched").end();
 
 		/**
 		 * API to fetch details by category id from GET service of Req 1 sub 2
 		 */
-		from(ApplicationConstant.GET_BY_CATEGORY_ID).routeId(ConstantClass.FIND_BY_CATEGORY_ID)
-				.toD("{{camel.getByCategoryId}}/${header.category_id}?bridgeEndpoint=true")
-				.log(LoggingLevel.DEBUG, "Message received : ${body}").log(LoggingLevel.INFO, "item fetched");
+		from(ApplicationConstant.GET_BY_CATEGORY_ID).routeId(ConstantClass.FIND_BY_CATEGORY_ID).toD(
+				"http://localhost:9090/mycart/category/${header.category_id}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+				.choice().when(body().isEqualTo("{\"message\":\"Category Not found\"}")).unmarshal().json()
+				.log(LoggingLevel.ERROR, "${body[message]}").marshal().json().stop().otherwise()
+				.log(LoggingLevel.DEBUG, "Message received : ${body}").log(LoggingLevel.INFO, "Details fetched").end();
 
 	}
 

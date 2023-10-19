@@ -37,7 +37,7 @@ public class ProducerRoute extends RouteBuilder {
 		from(ApplicationConstant.UPDATE_ITEM).routeId(ConstantClass.PRODUCER_ROUTE)
 				.log(LoggingLevel.DEBUG, "Received message : ${body}")
 				.log(LoggingLevel.INFO, "Message sending to activeMQ").unmarshal().json()
-				.split(simple("${body[items]}")).to("activemq:queue:updateItemQueue?requestTimeout=60000").end()
+				.to("activemq:queue:updateItemQueue?requestTimeout=60000")
 				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.setBody(constant("{\"message\":\"{{producerRoute.response}}\"}"));
 

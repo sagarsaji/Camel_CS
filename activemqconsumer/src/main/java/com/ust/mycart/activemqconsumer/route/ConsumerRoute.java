@@ -48,12 +48,12 @@ public class ConsumerRoute extends RouteBuilder {
 		/**
 		 * Route that consumes message from activeMQ and does the update operation
 		 */
-		from(ApplicationConstant.ACTIVEMQ_UPDATE_ITEM_QUEUE).routeId(ConstantClass.CONSUMER_ROUTE)
-				.log(LoggingLevel.INFO, "Message received from ActiveMQ")
+		from("activemq:queue:updateItemQueue?jmsMessageType=text").routeId(ConstantClass.CONSUMER_ROUTE)
+				.log(LoggingLevel.INFO, "Message received from ActiveMQ").split(simple("${body[items]}"))
 				.to(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
 				.setHeader(ConstantClass.ITEM_ID, simple("${body[_id]}")).to(ApplicationConstant.FIND_BY_ITEM_ID)
 				.setProperty(ConstantClass.AVAILABLE_STOCK, simple("${body[stockDetails][availableStock]}"))
-				.process(new StockUpdationProcessor()).to(ApplicationConstant.UPDATE_ITEM_IN_DB);
+				.process(new StockUpdationProcessor()).to(ApplicationConstant.UPDATE_ITEM_IN_DB).end();
 
 		/**
 		 * Route to assign properties for soldout and damaged
@@ -68,8 +68,8 @@ public class ConsumerRoute extends RouteBuilder {
 		 */
 		from(ApplicationConstant.FIND_BY_ITEM_ID).setBody(header(ConstantClass.ITEM_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
-				.when(body().isNull()).log(LoggingLevel.INFO, "Item not found for id : ${header.itemid}").otherwise()
-				.log(LoggingLevel.INFO, "Item found for id : ${header.itemid}").end();
+				.when(body().isNull()).log(LoggingLevel.ERROR, "Item not found for id : ${header.itemid}").stop()
+				.otherwise().log(LoggingLevel.INFO, "Item found for id : ${header.itemid}").end();
 
 		/**
 		 * Route which invokes MongoDB operation to update the item in the item

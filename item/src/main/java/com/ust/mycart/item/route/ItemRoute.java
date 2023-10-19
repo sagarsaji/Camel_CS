@@ -59,7 +59,9 @@ public class ItemRoute extends RouteBuilder {
 		onException(CamelMongoDbException.class).log(LoggingLevel.INFO, "Mongo Retry...")
 				.routeId("CamelMongoDbException").maximumRedeliveries(maximumRedeliveries)
 				.redeliveryDelay(redeliveryDelay).backOffMultiplier(backOffMultiplier).useExponentialBackOff()
-				.handled(true).log(LoggingLevel.ERROR, "${exception.message}");
+				.handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
+				.setBody(simple("{\"message\":\"${exception.message}\"}"))
+				.log(LoggingLevel.ERROR, "${exception.message}");
 
 		/**
 		 * Global Exception Throwable.class handled here
@@ -112,7 +114,7 @@ public class ItemRoute extends RouteBuilder {
 		from(ApplicationConstant.FIND_BY_ITEM_ID).routeId(ConstantClass.FIND_BY_ITEM_ID)
 				.setBody(header(ConstantClass.ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
-				.when(body().isNull()).log(LoggingLevel.INFO, "Item not found for id : ${header._id}")
+				.when(body().isNull()).log(LoggingLevel.ERROR, "Item not found for id : ${header._id}")
 				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
 				.setBody(constant("{\"message\":\"{{error.itemNotFound}}\"}"))
 				.throwException(new ItemException("Item not found")).otherwise()
@@ -125,7 +127,7 @@ public class ItemRoute extends RouteBuilder {
 		from(ApplicationConstant.FIND_BY_CATEGORY_ID).routeId(ConstantClass.FIND_BY_CATEGORY_ID)
 				.setBody(header(ConstantClass.CATEGORY_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + category + "&operation=findById")
-				.choice().when(body().isNull()).log(LoggingLevel.INFO, "Category ${header.category_id} not found")
+				.choice().when(body().isNull()).log(LoggingLevel.ERROR, "Category ${header.category_id} not found")
 				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
 				.setBody(constant("{\"message\":\"{{error.categoryNotFound}}\"}"))
 				.throwException(new ItemException("Category not found")).otherwise()
@@ -181,7 +183,7 @@ public class ItemRoute extends RouteBuilder {
 		 * Route which invokes MongoDB operation to insert a new item into the item
 		 * collection
 		 */
-		from(ApplicationConstant.INSERT_ITEM_INTO_DB)
+		from(ApplicationConstant.INSERT_ITEM_INTO_DB).routeId("insertItemIntoDb")
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=insert");
 
 		/**

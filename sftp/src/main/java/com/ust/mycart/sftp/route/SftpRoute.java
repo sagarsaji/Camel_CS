@@ -85,10 +85,10 @@ public class SftpRoute extends RouteBuilder {
 		from("cron:myData?schedule=0/10 * * * * *").routeId(ConstantClass.CRON_SERVICE)
 				.to(ApplicationConstant.FETCHING_CONTROLREF_DATE).to(ApplicationConstant.FETCH_ITEMS_BASED_ON_DATE)
 				.marshal().json().to(ApplicationConstant.UNMARSHAL_BODY_TO_LIST).choice()
-				.when(simple("${body.size()} == 0")).log("No record processed").otherwise().multicast()
-				.parallelProcessing().to(ApplicationConstant.ITEM_TREND_ANALYZER, ApplicationConstant.REVIEW_DUMP,
-						ApplicationConstant.STORE_FRONT_APP)
-				.end().end();
+				.when(simple("${body.size()} == 0")).log(LoggingLevel.INFO, "No record processed").otherwise()
+				.multicast().parallelProcessing().to(ApplicationConstant.ITEM_TREND_ANALYZER,
+						ApplicationConstant.REVIEW_DUMP, ApplicationConstant.STORE_FRONT_APP)
+				.end().to(ApplicationConstant.CONTROL_REF_UPDATING).end();
 
 		/**
 		 * Route to fetch the controlRef date and store into some property
@@ -107,6 +107,20 @@ public class SftpRoute extends RouteBuilder {
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findAll");
 
 		/**
+		 * Route to unmarshal body to type List.class
+		 */
+		from(ApplicationConstant.UNMARSHAL_BODY_TO_LIST).unmarshal().json(JsonLibrary.Jackson, List.class)
+				.setProperty(ConstantClass.LIST, body());
+
+		/**
+		 * Route to update lastProcessDate in controlRef collection
+		 */
+		from(ApplicationConstant.CONTROL_REF_UPDATING).routeId("lastProcessDate")
+				.bean(sftpBean, "controlRefDateUpdation")
+				.to("mongodb:mycartdb?database=" + database + "&collection=" + controlRef + "&operation=update")
+				.log(LoggingLevel.INFO, "Date updated");
+
+		/**
 		 * Req 3 sub 1: itemTrendAnalyzer.xml
 		 */
 		from(ApplicationConstant.ITEM_TREND_ANALYZER).routeId(ConstantClass.ITEM_TREND_ANALYZER)
@@ -117,13 +131,7 @@ public class SftpRoute extends RouteBuilder {
 				.split(body(), new ItemTrendAggregator()).to(ApplicationConstant.UNMARSHAL_BODY_TO_JSONBODY)
 				.bean(sftpBean, "itemTrendAnalyzer").end().marshal().jaxb(true).throttle(maximumMessageCount)
 				.timePeriodMillis(timePeriod).log(LoggingLevel.INFO, "Converted to XML")
-				.to(ApplicationConstant.SAVE_FILE_UPDATING_DATE);
-
-		/**
-		 * Route to unmarshal body to type List.class
-		 */
-		from(ApplicationConstant.UNMARSHAL_BODY_TO_LIST).unmarshal().json(JsonLibrary.Jackson, List.class)
-				.setProperty(ConstantClass.LIST, body());
+				.to(ApplicationConstant.SAVE_FILE);
 
 		/**
 		 * Route which invokes MongoDB findById operation to fetch details from category
@@ -140,22 +148,13 @@ public class SftpRoute extends RouteBuilder {
 				JsonBody.class);
 
 		/**
-		 * Route to update lastProcessDate in controlRef collection
-		 */
-		from(ApplicationConstant.CONTROL_REF_UPDATING).routeId("lastProcessDate")
-				.bean(sftpBean, "controlRefDateUpdation")
-				.to("mongodb:mycartdb?database=" + database + "&collection=" + controlRef + "&operation=update")
-				.log(LoggingLevel.INFO, "Date updated");
-
-		/**
 		 * Route to save file into SFTP folder and update lastProcessDate in controlRef
 		 * collection
 		 */
-		from(ApplicationConstant.SAVE_FILE_UPDATING_DATE)
+		from(ApplicationConstant.SAVE_FILE)
 				.setHeader(Exchange.FILE_NAME, simple("${header.routeid}_${date:now:yyyyMMdd_HHmmss}"))
 				.toD("ftp://{{camel.sftp.link}}/${header.routeid}?password=" + password
-						+ "&fileName=${header.CamelFileName}")
-				.to(ApplicationConstant.CONTROL_REF_UPDATING);
+						+ "&fileName=${header.CamelFileName}");
 
 		/**
 		 * Req 3 sub 2: reviewDump.xml
@@ -164,7 +163,7 @@ public class SftpRoute extends RouteBuilder {
 				.setHeader(ConstantClass.ROUTE_ID, simple("${routeId}")).split(body(), new ReviewXmlAggregator())
 				.to(ApplicationConstant.UNMARSHAL_BODY_TO_JSONBODY).bean(sftpBean, "reviewDump").end().marshal()
 				.jaxb(true).throttle(maximumMessageCount).timePeriodMillis(timePeriod)
-				.log(LoggingLevel.INFO, "Converted to XML").to(ApplicationConstant.SAVE_FILE_UPDATING_DATE);
+				.log(LoggingLevel.INFO, "Converted to XML").to(ApplicationConstant.SAVE_FILE);
 
 		/**
 		 * Req 3 sub 3: storeFrontApp.json
@@ -176,7 +175,7 @@ public class SftpRoute extends RouteBuilder {
 				.setProperty(ConstantClass.CATEGORY_ID, simple("${body.categoryId}"))
 				.to(ApplicationConstant.FIND_BY_CATEGORY_ID).bean(sftpBean, "jsonResponse").end().marshal()
 				.json(JsonLibrary.Jackson, true).throttle(maximumMessageCount).timePeriodMillis(timePeriod)
-				.log(LoggingLevel.INFO, "Converted to JSON").to(ApplicationConstant.SAVE_FILE_UPDATING_DATE);
+				.log(LoggingLevel.INFO, "Converted to JSON").to(ApplicationConstant.SAVE_FILE);
 
 	}
 }

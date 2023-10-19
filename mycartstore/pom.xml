@@ -34,6 +34,14 @@
 			<scope>test</scope>
 		</dependency>
 		<!--
+		https://mvnrepository.com/artifact/org.apache.camel.springboot/camel-jsonpath-starter -->
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-jsonpath-starter</artifactId>
+			<version>4.1.0</version>
+		</dependency>
+
+		<!--
 		https://mvnrepository.com/artifact/org.apache.camel.springboot/camel-servlet-starter -->
 		<dependency>
 			<groupId>org.apache.camel.springboot</groupId>
@@ -62,6 +70,20 @@
 			<artifactId>camel-servlet-starter</artifactId>
 			<version>4.0.0</version>
 		</dependency>
+		<!--
+		https://mvnrepository.com/artifact/org.apache.camel.springboot/camel-jackson-starter -->
+		<dependency>
+			<groupId>org.apache.camel.springboot</groupId>
+			<artifactId>camel-jackson-starter</artifactId>
+			<version>4.0.0</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.camel/camel-jsonpath -->
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jsonpath</artifactId>
+			<version>4.1.0</version>
+		</dependency>
+
 
 	</dependencies>
 
