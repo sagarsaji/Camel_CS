@@ -47,19 +47,20 @@ public class ItemRoute extends RouteBuilder {
 	public void configure() throws Exception {
 
 		/**
-		 * All Exceptions handled here
+		 * Exceptions like Item not found, Category not found is handled here
 		 */
-		onException(ItemException.class).handled(true).setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
+		onException(ItemException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
+				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 				.log(LoggingLevel.ERROR, "${exception.message}");
 
 		/**
 		 * Req 6: MongoDbException handled here: time =
 		 * redeliveryDelay*(backOffMultiplier^(retryAttempt - 1))
 		 */
-		onException(CamelMongoDbException.class).log(LoggingLevel.INFO, "Mongo Retry...")
-				.routeId("CamelMongoDbException").maximumRedeliveries(maximumRedeliveries)
-				.redeliveryDelay(redeliveryDelay).backOffMultiplier(backOffMultiplier).useExponentialBackOff()
-				.handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
+		onException(CamelMongoDbException.class).log(LoggingLevel.ERROR, "MongoDB Exception occured...")
+				.maximumRedeliveries(maximumRedeliveries).redeliveryDelay(redeliveryDelay)
+				.backOffMultiplier(backOffMultiplier).useExponentialBackOff().handled(true)
+				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(500))
 				.setBody(simple("{\"message\":\"${exception.message}\"}"))
 				.log(LoggingLevel.ERROR, "${exception.message}");
 
@@ -99,7 +100,7 @@ public class ItemRoute extends RouteBuilder {
 		/**
 		 * Req 1 sub 1: API Route to access details by item id
 		 */
-		from(ApplicationConstant.GET_ITEMS_BY_ID).routeId(ConstantClass.GET_ITEMS_BY_ID)
+		from(ApplicationConstant.GET_ITEMS_BY_ID).routeId(ApplicationConstant.GET_ITEMS_BY_ID)
 				.to(ApplicationConstant.FIND_BY_ITEM_ID).marshal().json().unmarshal()
 				.json(JsonLibrary.Jackson, Item.class).setProperty(ConstantClass.MESSAGE_BODY, body())
 				.setHeader(ConstantClass.CATEGORY_ID, simple("${body.categoryId}"))
@@ -111,11 +112,10 @@ public class ItemRoute extends RouteBuilder {
 		 * Route to check if the entered item id is present in the item collection or
 		 * not
 		 */
-		from(ApplicationConstant.FIND_BY_ITEM_ID).routeId(ConstantClass.FIND_BY_ITEM_ID)
+		from(ApplicationConstant.FIND_BY_ITEM_ID).routeId(ApplicationConstant.FIND_BY_ITEM_ID)
 				.setBody(header(ConstantClass.ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
 				.when(body().isNull()).log(LoggingLevel.ERROR, "Item not found for id : ${header._id}")
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
 				.setBody(constant("{\"message\":\"{{error.itemNotFound}}\"}"))
 				.throwException(new ItemException("Item not found")).otherwise()
 				.log(LoggingLevel.INFO, "Item found for id : ${header._id}").end();
@@ -124,11 +124,10 @@ public class ItemRoute extends RouteBuilder {
 		 * Route to check if the entered category id is present in the category
 		 * collection or not
 		 */
-		from(ApplicationConstant.FIND_BY_CATEGORY_ID).routeId(ConstantClass.FIND_BY_CATEGORY_ID)
+		from(ApplicationConstant.FIND_BY_CATEGORY_ID).routeId(ApplicationConstant.FIND_BY_CATEGORY_ID)
 				.setBody(header(ConstantClass.CATEGORY_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + category + "&operation=findById")
 				.choice().when(body().isNull()).log(LoggingLevel.ERROR, "Category ${header.category_id} not found")
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
 				.setBody(constant("{\"message\":\"{{error.categoryNotFound}}\"}"))
 				.throwException(new ItemException("Category not found")).otherwise()
 				.setProperty(ConstantClass.CATEGORY_NAME, simple("${body[categoryName]}"))
@@ -138,7 +137,7 @@ public class ItemRoute extends RouteBuilder {
 		 * Req 1 sub 2: API Route to access details by category id and also accepts a
 		 * filter named includeSpecial
 		 */
-		from(ApplicationConstant.GET_BY_CATEGORY_ID).routeId(ConstantClass.GET_BY_CATEGORY_ID)
+		from(ApplicationConstant.GET_BY_CATEGORY_ID).routeId(ApplicationConstant.GET_BY_CATEGORY_ID)
 				.to(ApplicationConstant.FIND_BY_CATEGORY_ID).to(ApplicationConstant.INCLUDE_SPECIAL)
 				.to(ApplicationConstant.FIND_ALL_ITEMS).bean(itemBean, "categoryResponse").marshal().json()
 				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
@@ -147,7 +146,7 @@ public class ItemRoute extends RouteBuilder {
 		/**
 		 * Route to check includeSpecial query parameter condition
 		 */
-		from(ApplicationConstant.INCLUDE_SPECIAL).routeId(ConstantClass.INCLUDE_SPECIAL).choice()
+		from(ApplicationConstant.INCLUDE_SPECIAL).routeId(ApplicationConstant.INCLUDE_SPECIAL).choice()
 				.when(header(ConstantClass.INCLUDE_SPECIAL).isEqualTo("false"))
 				.setHeader(MongoDbConstants.CRITERIA,
 						simple("{\"categoryId\": '${header.category_id}',\"specialProduct\": false}"))
@@ -158,13 +157,13 @@ public class ItemRoute extends RouteBuilder {
 		 * Route which invokes MongoDB operation to fetch all the items from the item
 		 * collection
 		 */
-		from(ApplicationConstant.FIND_ALL_ITEMS)
+		from(ApplicationConstant.FIND_ALL_ITEMS).routeId(ApplicationConstant.FIND_ALL_ITEMS)
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findAll");
 
 		/**
 		 * Req 1 sub 3: API Route to add an item
 		 */
-		from(ApplicationConstant.ADD_ITEMS).routeId(ConstantClass.ADD_ITEMS).unmarshal()
+		from(ApplicationConstant.ADD_ITEMS).routeId(ApplicationConstant.ADD_ITEMS).unmarshal()
 				.json(JsonLibrary.Jackson, Item.class).to(ApplicationConstant.BEAN_VALIDATOR)
 				.to(ApplicationConstant.ADD_ITEM_PROPERTY_ASSIGNING).to(ApplicationConstant.FIND_BY_CATEGORY_ID)
 				.bean(itemBean, "dateAdding").to(ApplicationConstant.INSERT_ITEM_INTO_DB).bean(itemBean, "postResponse")
@@ -175,7 +174,7 @@ public class ItemRoute extends RouteBuilder {
 		 * Route to assign property for the message body and setting header for category
 		 * id
 		 */
-		from(ApplicationConstant.ADD_ITEM_PROPERTY_ASSIGNING)
+		from(ApplicationConstant.ADD_ITEM_PROPERTY_ASSIGNING).routeId(ApplicationConstant.ADD_ITEM_PROPERTY_ASSIGNING)
 				.setHeader(ConstantClass.CATEGORY_ID, simple("${body.categoryId}"))
 				.setProperty(ConstantClass.MESSAGE_BODY, body());
 
@@ -183,13 +182,13 @@ public class ItemRoute extends RouteBuilder {
 		 * Route which invokes MongoDB operation to insert a new item into the item
 		 * collection
 		 */
-		from(ApplicationConstant.INSERT_ITEM_INTO_DB).routeId("insertItemIntoDb")
+		from(ApplicationConstant.INSERT_ITEM_INTO_DB).routeId(ApplicationConstant.INSERT_ITEM_INTO_DB)
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=insert");
 
 		/**
 		 * Req 1 sub 4: API Route to update an item
 		 */
-		from(ApplicationConstant.UPDATE_ITEMS).routeId(ConstantClass.UPDATE_ITEMS)
+		from(ApplicationConstant.UPDATE_ITEMS).routeId(ApplicationConstant.UPDATE_ITEMS)
 				.split(simple("${body[items]}"), new UpdateResponseAggregator())
 				.to(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
 				.setHeader(ConstantClass.ID, simple("${body[_id]}")).to(ApplicationConstant.FIND_BY_ITEM_ID)
@@ -202,6 +201,7 @@ public class ItemRoute extends RouteBuilder {
 		 * Route to assign properties for soldout and damaged
 		 */
 		from(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
+				.routeId(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
 				.setProperty(ConstantClass.SOLDOUT, simple("${body[stockDetails][soldOut]}"))
 				.setProperty(ConstantClass.DAMAGED, simple("${body[stockDetails][damaged]}"));
 
@@ -209,7 +209,7 @@ public class ItemRoute extends RouteBuilder {
 		 * Route which invokes MongoDB operation to update the item in the item
 		 * collection
 		 */
-		from(ApplicationConstant.UPDATE_ITEM_IN_DB)
+		from(ApplicationConstant.UPDATE_ITEM_IN_DB).routeId(ApplicationConstant.UPDATE_ITEM_IN_DB)
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=save");
 
 	}

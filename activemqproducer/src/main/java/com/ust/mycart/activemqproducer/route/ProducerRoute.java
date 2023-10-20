@@ -27,18 +27,19 @@ public class ProducerRoute extends RouteBuilder {
 		 */
 		rest()
 				/**
-				 * API to send the message to activeMQ and then updates the item
+				 * API to send the message to activeMQ
 				 */
 				.put("/item").to(ApplicationConstant.UPDATE_ITEM);
 
 		/**
-		 * Req 2: API Route that sends message to activeMQ and then updates the item
+		 * Req 2: API Route that sends message to activeMQ
 		 */
 		from(ApplicationConstant.UPDATE_ITEM).routeId(ConstantClass.PRODUCER_ROUTE)
 				.log(LoggingLevel.DEBUG, "Received message : ${body}")
 				.log(LoggingLevel.INFO, "Message sending to activeMQ").unmarshal().json()
 				.to("activemq:queue:updateItemQueue?requestTimeout=60000")
 				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
+				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 				.setBody(constant("{\"message\":\"{{producerRoute.response}}\"}"));
 
 	}

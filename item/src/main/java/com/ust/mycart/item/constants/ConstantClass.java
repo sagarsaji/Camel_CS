@@ -18,5 +18,9 @@ public class ConstantClass {
 	public static final String WORKING_ID = "workingId";
 	public static final String SOLDOUT = "soldout";
 	public static final String DAMAGED = "damaged";
+	public static final String INSERT_ITEM_INTO_DB = "insertItemIntoDb";
+	public static final String FIND_ALL_ITEMS = "findAllItems";
+	public static final String ADD_ITEM_PROPERTY_ASSIGNING = "addItemPropertyAssigning";
+	public static final String UPDATE_ITEM_PROPERTY_ASSIGNING = "updateItemPropertyAssigning";
 
 }

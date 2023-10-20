@@ -93,7 +93,8 @@ public class SftpRoute extends RouteBuilder {
 		/**
 		 * Route to fetch the controlRef date and store into some property
 		 */
-		from(ApplicationConstant.FETCHING_CONTROLREF_DATE).setBody(constant("controlRef"))
+		from(ApplicationConstant.FETCHING_CONTROLREF_DATE).routeId(ApplicationConstant.FETCHING_CONTROLREF_DATE)
+				.setBody(constant(ConstantClass.CONTROL_REF))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + controlRef + "&operation=findById")
 				.setProperty(ConstantClass.CONTROL_REF_DATE, simple("${body[date]}"));
 
@@ -101,7 +102,7 @@ public class SftpRoute extends RouteBuilder {
 		 * Route to fetch all details from the item collection based on lastUpdateDate >
 		 * lastProcessDate
 		 */
-		from(ApplicationConstant.FETCH_ITEMS_BASED_ON_DATE)
+		from(ApplicationConstant.FETCH_ITEMS_BASED_ON_DATE).routeId(ApplicationConstant.FETCH_ITEMS_BASED_ON_DATE)
 				.setHeader(MongoDbConstants.CRITERIA,
 						simple("{ \"lastUpdateDate\": { \"$gt\": \"${exchangeProperty.contref}\" } }"))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findAll");
@@ -109,13 +110,13 @@ public class SftpRoute extends RouteBuilder {
 		/**
 		 * Route to unmarshal body to type List.class
 		 */
-		from(ApplicationConstant.UNMARSHAL_BODY_TO_LIST).unmarshal().json(JsonLibrary.Jackson, List.class)
-				.setProperty(ConstantClass.LIST, body());
+		from(ApplicationConstant.UNMARSHAL_BODY_TO_LIST).routeId(ApplicationConstant.UNMARSHAL_BODY_TO_LIST).unmarshal()
+				.json(JsonLibrary.Jackson, List.class).setProperty(ConstantClass.LIST, body());
 
 		/**
 		 * Route to update lastProcessDate in controlRef collection
 		 */
-		from(ApplicationConstant.CONTROL_REF_UPDATING).routeId("lastProcessDate")
+		from(ApplicationConstant.CONTROL_REF_UPDATING).routeId(ConstantClass.LAST_PROCESS_DATE)
 				.bean(sftpBean, "controlRefDateUpdation")
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + controlRef + "&operation=update")
 				.log(LoggingLevel.INFO, "Date updated");
@@ -137,21 +138,22 @@ public class SftpRoute extends RouteBuilder {
 		 * Route which invokes MongoDB findById operation to fetch details from category
 		 * collection and assign property for category name
 		 */
-		from(ApplicationConstant.FIND_BY_CATEGORY_ID).setBody(exchangeProperty(ConstantClass.CATEGORY_ID))
+		from(ApplicationConstant.FIND_BY_CATEGORY_ID).routeId(ApplicationConstant.FIND_BY_CATEGORY_ID)
+				.setBody(exchangeProperty(ConstantClass.CATEGORY_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + category + "&operation=findById")
 				.setProperty(ConstantClass.CATEGORY_NAME, simple("${body[categoryName]}"));
 
 		/**
 		 * Route to unmarshal body to type JsonBody.class
 		 */
-		from(ApplicationConstant.UNMARSHAL_BODY_TO_JSONBODY).marshal().json().unmarshal().json(JsonLibrary.Jackson,
-				JsonBody.class);
+		from(ApplicationConstant.UNMARSHAL_BODY_TO_JSONBODY).routeId(ApplicationConstant.UNMARSHAL_BODY_TO_JSONBODY)
+				.marshal().json().unmarshal().json(JsonLibrary.Jackson, JsonBody.class);
 
 		/**
 		 * Route to save file into SFTP folder and update lastProcessDate in controlRef
 		 * collection
 		 */
-		from(ApplicationConstant.SAVE_FILE)
+		from(ApplicationConstant.SAVE_FILE).routeId(ApplicationConstant.SAVE_FILE)
 				.setHeader(Exchange.FILE_NAME, simple("${header.routeid}_${date:now:yyyyMMdd_HHmmss}"))
 				.toD("ftp://{{camel.sftp.link}}/${header.routeid}?password=" + password
 						+ "&fileName=${header.CamelFileName}");

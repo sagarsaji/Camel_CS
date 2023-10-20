@@ -13,5 +13,7 @@ public class ConstantClass {
 	public static final String CATEGORY_NAME = "categoryname";
 	public static final String CONTROL_REF_DATE = "contref";
 	public static final String CRON_SERVICE = "cronService";
+	public static final String LAST_PROCESS_DATE = "lastProcessDate";
+	public static final String CONTROL_REF = "controlRef";
 
 }

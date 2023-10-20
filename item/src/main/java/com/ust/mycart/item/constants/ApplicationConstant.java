@@ -6,7 +6,6 @@ public class ApplicationConstant {
 	public static final String GET_BY_CATEGORY_ID = "direct:getByCategoryId";
 	public static final String ADD_ITEMS = "direct:addItems";
 	public static final String UPDATE_ITEMS = "direct:updateItems";
-
 	public static final String FIND_BY_ITEM_ID = "direct:findByItemId";
 	public static final String FIND_BY_CATEGORY_ID = "direct:findByCategoryId";
 	public static final String INCLUDE_SPECIAL = "direct:includeSpecial";

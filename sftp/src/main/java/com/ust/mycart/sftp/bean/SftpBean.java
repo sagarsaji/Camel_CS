@@ -38,9 +38,8 @@ public class SftpBean {
 		Map<String, Object> updateFields = new HashMap<>();
 		updateFields.put("$set", Collections.singletonMap("date", date));
 
-		exchange.getMessage().setHeader(MongoDbConstants.CRITERIA, filter);
-		exchange.getMessage().setHeader(MongoDbConstants.MULTIUPDATE, false);
-		exchange.getMessage().setBody(updateFields);
+		exchange.getIn().setHeader(MongoDbConstants.CRITERIA, filter);
+		exchange.getIn().setBody(updateFields);
 	}
 
 	public void itemTrendAnalyzer(Exchange exchange, @ExchangeProperty("categoryMap") Map<String, String> categoryMap,

@@ -46,10 +46,11 @@ public class ConsumerRoute extends RouteBuilder {
 		onException(Throwable.class).handled(true).log(LoggingLevel.ERROR, "${exception.message}");
 
 		/**
-		 * Route that consumes message from activeMQ and does the update operation
+		 * Req 2: Route that consumes message from activeMQ and does the update
+		 * operation
 		 */
 		from("activemq:queue:updateItemQueue?jmsMessageType=text").routeId(ConstantClass.CONSUMER_ROUTE)
-				.log(LoggingLevel.INFO, "Message received from ActiveMQ").split(simple("${body[items]}"))
+				.log(LoggingLevel.DEBUG, "Message received from ActiveMQ : ${body}").split(simple("${body[items]}"))
 				.to(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
 				.setHeader(ConstantClass.ITEM_ID, simple("${body[_id]}")).to(ApplicationConstant.FIND_BY_ITEM_ID)
 				.setProperty(ConstantClass.AVAILABLE_STOCK, simple("${body[stockDetails][availableStock]}"))
@@ -59,6 +60,7 @@ public class ConsumerRoute extends RouteBuilder {
 		 * Route to assign properties for soldout and damaged
 		 */
 		from(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
+				.routeId(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
 				.setProperty(ConstantClass.SOLDOUT, simple("${body[stockDetails][soldOut]}"))
 				.setProperty(ConstantClass.DAMAGED, simple("${body[stockDetails][damaged]}"));
 
@@ -66,7 +68,8 @@ public class ConsumerRoute extends RouteBuilder {
 		 * Route to check if the entered item id is present in the item collection or
 		 * not
 		 */
-		from(ApplicationConstant.FIND_BY_ITEM_ID).setBody(header(ConstantClass.ITEM_ID))
+		from(ApplicationConstant.FIND_BY_ITEM_ID).routeId(ApplicationConstant.FIND_BY_ITEM_ID)
+				.setBody(header(ConstantClass.ITEM_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
 				.when(body().isNull()).log(LoggingLevel.ERROR, "Item not found for id : ${header.itemid}").stop()
 				.otherwise().log(LoggingLevel.INFO, "Item found for id : ${header.itemid}").end();
@@ -75,7 +78,7 @@ public class ConsumerRoute extends RouteBuilder {
 		 * Route which invokes MongoDB operation to update the item in the item
 		 * collection
 		 */
-		from(ApplicationConstant.UPDATE_ITEM_IN_DB)
+		from(ApplicationConstant.UPDATE_ITEM_IN_DB).routeId(ApplicationConstant.UPDATE_ITEM_IN_DB)
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=save");
 
 	}
