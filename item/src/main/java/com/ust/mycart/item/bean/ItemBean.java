@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.ust.mycart.item.entity.CategoryResponse;
 import com.ust.mycart.item.entity.Item;
+import com.ust.mycart.item.entity.ItemRequest;
 import com.ust.mycart.item.entity.Response;
 
 @Component
@@ -48,12 +49,22 @@ public class ItemBean {
 		exchange.getIn().setBody(response);
 	}
 
-	public void dateAdding(Exchange exchange, @ExchangeProperty("messagebody") Item item) {
+	public void mappingToItemEntity(Exchange exchange, @ExchangeProperty("messagebody") ItemRequest itemRequest) {
 
 		CURRENT_DATE_TIME = LocalDateTime.now();
 		String date = CURRENT_DATE_TIME.format(FORMATTER);
-		item.setLastUpdateDate(date);
 
+		Item item = new Item();
+		item.set_id(itemRequest.get_id());
+		item.setItemName(itemRequest.getItemName());
+		item.setCategoryId(itemRequest.getCategoryId());
+		item.setLastUpdateDate(date);
+		item.setItemPrice(itemRequest.getItemPrice());
+		item.setStockDetails(itemRequest.getStockDetails());
+		item.setSpecialProduct(itemRequest.getSpecialProduct());
+		item.setReview(itemRequest.getReview());
+
+		exchange.setProperty("messagebody", item);
 		exchange.getIn().setBody(item);
 	}
 

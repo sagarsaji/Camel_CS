@@ -16,7 +16,7 @@ import com.ust.mycart.item.bean.ItemBean;
 import com.ust.mycart.item.constants.ApplicationConstant;
 import com.ust.mycart.item.constants.ConstantClass;
 import com.ust.mycart.item.entity.Item;
-
+import com.ust.mycart.item.entity.ItemRequest;
 import com.ust.mycart.item.exception.ItemException;
 
 @Component
@@ -164,10 +164,10 @@ public class ItemRoute extends RouteBuilder {
 		 * Req 1 sub 3: API Route to add an item
 		 */
 		from(ApplicationConstant.ADD_ITEMS).routeId(ApplicationConstant.ADD_ITEMS).unmarshal()
-				.json(JsonLibrary.Jackson, Item.class).to(ApplicationConstant.BEAN_VALIDATOR)
+				.json(JsonLibrary.Jackson, ItemRequest.class).to(ApplicationConstant.BEAN_VALIDATOR)
 				.to(ApplicationConstant.ADD_ITEM_PROPERTY_ASSIGNING).to(ApplicationConstant.FIND_BY_CATEGORY_ID)
-				.bean(itemBean, "dateAdding").to(ApplicationConstant.INSERT_ITEM_INTO_DB).bean(itemBean, "postResponse")
-				.marshal().json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
+				.bean(itemBean, "mappingToItemEntity").to(ApplicationConstant.INSERT_ITEM_INTO_DB)
+				.bean(itemBean, "postResponse").marshal().json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Item inserted into database");
 
 		/**

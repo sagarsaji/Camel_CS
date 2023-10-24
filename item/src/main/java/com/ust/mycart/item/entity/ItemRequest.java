@@ -4,26 +4,36 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Item {
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public class ItemRequest {
 
 	@JsonProperty("_id")
 	private String _id;
 	@JsonProperty("itemName")
+	@NotBlank(message = "itemName should not be blank")
+	@NotNull(message = "itemName should not be null")
 	private String itemName;
 	@JsonProperty("categoryId")
+	@NotNull(message = "categoryId should not be null")
+	@NotBlank(message = "categoryId should not be blank")
 	private String categoryId;
 	@JsonProperty("lastUpdateDate")
 	private String lastUpdateDate;
+	@Valid
 	@JsonProperty("itemPrice")
 	private ItemPrice itemPrice;
 	@JsonProperty("stockDetails")
 	private StockDetails stockDetails;
 	@JsonProperty("specialProduct")
+	@NotNull(message = "specialProduct should not be null")
 	private Boolean specialProduct;
 	@JsonProperty("review")
 	private List<Review> review;
 
-	public Item(String _id, String itemName, String categoryId, String lastUpdateDate, ItemPrice itemPrice,
+	public ItemRequest(String _id, String itemName, String categoryId, String lastUpdateDate, ItemPrice itemPrice,
 			StockDetails stockDetails, Boolean specialProduct, List<Review> review) {
 		super();
 		this._id = _id;
@@ -100,7 +110,7 @@ public class Item {
 		this.review = review;
 	}
 
-	public Item() {
+	public ItemRequest() {
 		super();
 	}
 
