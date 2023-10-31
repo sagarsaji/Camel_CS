@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.ust.mycart.item.aggregator.UpdateResponseAggregator;
+import com.mongodb.MongoWriteException;
 import com.ust.mycart.item.bean.ItemBean;
 import com.ust.mycart.item.constants.ApplicationConstant;
 import com.ust.mycart.item.constants.ConstantClass;
@@ -49,9 +49,14 @@ public class ItemRoute extends RouteBuilder {
 		/**
 		 * Exceptions like Item not found, Category not found is handled here
 		 */
-		onException(ItemException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
-				.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
+		onException(ItemException.class).handled(true).setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
 				.log(LoggingLevel.ERROR, "${exception.message}");
+
+		/**
+		 * Exception which occurs when trying to add an already existing item id
+		 */
+		onException(MongoWriteException.class).handled(true).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(409))
+				.setBody(constant("{\"message\":\"{{error.productAlreadyExist}}\"}")).log("${exception.message}");
 
 		/**
 		 * Req 6: MongoDbException handled here: time =
@@ -105,7 +110,6 @@ public class ItemRoute extends RouteBuilder {
 				.json(JsonLibrary.Jackson, Item.class).setProperty(ConstantClass.MESSAGE_BODY, body())
 				.setHeader(ConstantClass.CATEGORY_ID, simple("${body.categoryId}"))
 				.to(ApplicationConstant.FIND_BY_CATEGORY_ID).bean(itemBean, "postResponse").marshal().json()
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Item fetched from database");
 
 		/**
@@ -115,8 +119,9 @@ public class ItemRoute extends RouteBuilder {
 		from(ApplicationConstant.FIND_BY_ITEM_ID).routeId(ApplicationConstant.FIND_BY_ITEM_ID)
 				.setBody(header(ConstantClass.ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
-				.when(body().isNull()).log(LoggingLevel.ERROR, "Item not found for id : ${header._id}")
-				.setBody(constant("{\"message\":\"{{error.itemNotFound}}\"}"))
+				.when(body().isNull()).setBody(constant("{\"message\":\"{{error.itemNotFound}}\"}"))
+				.log(LoggingLevel.ERROR, "Item not found for id : ${header._id}")
+				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
 				.throwException(new ItemException("Item not found")).otherwise()
 				.log(LoggingLevel.INFO, "Item found for id : ${header._id}").end();
 
@@ -127,8 +132,9 @@ public class ItemRoute extends RouteBuilder {
 		from(ApplicationConstant.FIND_BY_CATEGORY_ID).routeId(ApplicationConstant.FIND_BY_CATEGORY_ID)
 				.setBody(header(ConstantClass.CATEGORY_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + category + "&operation=findById")
-				.choice().when(body().isNull()).log(LoggingLevel.ERROR, "Category ${header.category_id} not found")
-				.setBody(constant("{\"message\":\"{{error.categoryNotFound}}\"}"))
+				.choice().when(body().isNull()).setBody(constant("{\"message\":\"{{error.categoryNotFound}}\"}"))
+				.log(LoggingLevel.ERROR, "Category ${header.category_id} not found")
+				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(404))
 				.throwException(new ItemException("Category not found")).otherwise()
 				.setProperty(ConstantClass.CATEGORY_NAME, simple("${body[categoryName]}"))
 				.setProperty(ConstantClass.CATEGORY_DEPT, simple("${body[categoryDep]}")).end();
@@ -140,7 +146,6 @@ public class ItemRoute extends RouteBuilder {
 		from(ApplicationConstant.GET_BY_CATEGORY_ID).routeId(ApplicationConstant.GET_BY_CATEGORY_ID)
 				.to(ApplicationConstant.FIND_BY_CATEGORY_ID).to(ApplicationConstant.INCLUDE_SPECIAL)
 				.to(ApplicationConstant.FIND_ALL_ITEMS).bean(itemBean, "categoryResponse").marshal().json()
-				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
 				.log(LoggingLevel.INFO, "Details fetched from database");
 
 		/**
@@ -167,8 +172,7 @@ public class ItemRoute extends RouteBuilder {
 				.json(JsonLibrary.Jackson, ItemRequest.class).to(ApplicationConstant.BEAN_VALIDATOR)
 				.to(ApplicationConstant.ADD_ITEM_PROPERTY_ASSIGNING).to(ApplicationConstant.FIND_BY_CATEGORY_ID)
 				.bean(itemBean, "mappingToItemEntity").to(ApplicationConstant.INSERT_ITEM_INTO_DB)
-				.bean(itemBean, "postResponse").marshal().json().setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200))
-				.log(LoggingLevel.INFO, "Item inserted into database");
+				.bean(itemBean, "postResponse").marshal().json().log(LoggingLevel.INFO, "Item inserted into database");
 
 		/**
 		 * Route to assign property for the message body and setting header for category
@@ -188,14 +192,14 @@ public class ItemRoute extends RouteBuilder {
 		/**
 		 * Req 1 sub 4: API Route to update an item
 		 */
-		from(ApplicationConstant.UPDATE_ITEMS).routeId(ApplicationConstant.UPDATE_ITEMS)
-				.split(simple("${body[items]}"), new UpdateResponseAggregator())
+		from(ApplicationConstant.UPDATE_ITEMS).routeId(ApplicationConstant.UPDATE_ITEMS).split(simple("${body[items]}"))
 				.to(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
 				.setHeader(ConstantClass.ID, simple("${body[_id]}")).to(ApplicationConstant.FIND_BY_ITEM_ID)
 				.setProperty(ConstantClass.AVAILABLE_STOCK, simple("${body[stockDetails][availableStock]}"))
 				.bean(itemBean, "stockUpdation").to(ApplicationConstant.UPDATE_ITEM_IN_DB)
 				.setProperty(ConstantClass.WORKING_ID, header(ConstantClass.ID)).end()
-				.setBody(simple("{\"message\":\"${body}\"}")).setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200));
+				.setBody(constant("{\"message\":\"Details send for updating...\"}"))
+				.setHeader(Exchange.HTTP_RESPONSE_CODE, constant(200));
 
 		/**
 		 * Route to assign properties for soldout and damaged

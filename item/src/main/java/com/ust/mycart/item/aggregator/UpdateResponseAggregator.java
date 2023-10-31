@@ -26,6 +26,7 @@ public class UpdateResponseAggregator implements AggregationStrategy {
 			response = "Details updated for id : " + workingIds;
 			newExchange.setProperty("response", response);
 			newExchange.setProperty("ids", workingIds);
+			newExchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 200);
 			newExchange.getIn().setBody(response);
 			return newExchange;
 
@@ -41,6 +42,7 @@ public class UpdateResponseAggregator implements AggregationStrategy {
 		response = "Details updated for id : " + workingIds;
 		oldExchange.setProperty("response", response);
 		oldExchange.setProperty("ids", workingIds);
+		oldExchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 200);
 		oldExchange.getIn().setBody(response);
 		return oldExchange;
 	}

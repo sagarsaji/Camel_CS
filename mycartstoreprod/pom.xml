@@ -40,11 +40,6 @@
 			<artifactId>camel-jsonpath-starter</artifactId>
 			<version>4.1.0</version>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.camel.springboot</groupId>
-			<artifactId>camel-mongodb-starter</artifactId>
-			<version>4.0.0</version>
-		</dependency>
 
 		<!--
 		https://mvnrepository.com/artifact/org.apache.camel.springboot/camel-servlet-starter -->

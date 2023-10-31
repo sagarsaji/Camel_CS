@@ -125,8 +125,7 @@ public class SftpRoute extends RouteBuilder {
 		 * Req 3 sub 1: itemTrendAnalyzer.xml
 		 */
 		from(ApplicationConstant.ITEM_TREND_ANALYZER).routeId(ConstantClass.ITEM_TREND_ANALYZER)
-				.setHeader(ConstantClass.ROUTE_ID, simple("${routeId}")).marshal().json()
-				.to(ApplicationConstant.UNMARSHAL_BODY_TO_LIST).split(body(), new CategoryNameAggregator())
+				.setHeader(ConstantClass.ROUTE_ID, simple("${routeId}")).split(body(), new CategoryNameAggregator())
 				.setProperty(ConstantClass.CATEGORY_ID, simple("${body[categoryId]}"))
 				.to(ApplicationConstant.FIND_BY_CATEGORY_ID).end().setBody(exchangeProperty(ConstantClass.LIST))
 				.split(body(), new ItemTrendAggregator()).to(ApplicationConstant.UNMARSHAL_BODY_TO_JSONBODY)

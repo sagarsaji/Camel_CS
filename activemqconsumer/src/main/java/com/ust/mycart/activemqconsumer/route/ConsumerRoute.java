@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.ust.mycart.activemqconsumer.constant.ApplicationConstant;
 import com.ust.mycart.activemqconsumer.constant.ConstantClass;
+import com.ust.mycart.activemqconsumer.exception.ConsumerException;
 import com.ust.mycart.activemqconsumer.processor.StockUpdationProcessor;
 
 @Component
@@ -32,6 +33,11 @@ public class ConsumerRoute extends RouteBuilder {
 	public void configure() throws Exception {
 
 		/**
+		 * Exception related to Item not Found handled here
+		 */
+		onException(ConsumerException.class).handled(true).log(LoggingLevel.ERROR, "${exception.message}");
+
+		/**
 		 * Req 6: MongoDbException handled here: time =
 		 * redeliveryDelay*(backOffMultiplier^(retryAttempt - 1))
 		 */
@@ -51,7 +57,7 @@ public class ConsumerRoute extends RouteBuilder {
 		 */
 		from("activemq:queue:updateItemQueue?jmsMessageType=text").routeId(ConstantClass.CONSUMER_ROUTE)
 				.log(LoggingLevel.DEBUG, "Message received from ActiveMQ : ${body}").split(simple("${body[items]}"))
-				.to(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
+				.parallelProcessing().to(ApplicationConstant.UPDATE_ITEM_PROPERTY_ASSIGNING)
 				.setHeader(ConstantClass.ITEM_ID, simple("${body[_id]}")).to(ApplicationConstant.FIND_BY_ITEM_ID)
 				.setProperty(ConstantClass.AVAILABLE_STOCK, simple("${body[stockDetails][availableStock]}"))
 				.process(new StockUpdationProcessor()).to(ApplicationConstant.UPDATE_ITEM_IN_DB).end();
@@ -71,8 +77,9 @@ public class ConsumerRoute extends RouteBuilder {
 		from(ApplicationConstant.FIND_BY_ITEM_ID).routeId(ApplicationConstant.FIND_BY_ITEM_ID)
 				.setBody(header(ConstantClass.ITEM_ID))
 				.to("mongodb:mycartdb?database=" + database + "&collection=" + item + "&operation=findById").choice()
-				.when(body().isNull()).log(LoggingLevel.ERROR, "Item not found for id : ${header.itemid}").stop()
-				.otherwise().log(LoggingLevel.INFO, "Item found for id : ${header.itemid}").end();
+				.when(body().isNull()).log(LoggingLevel.ERROR, "Item not found for id : ${header.itemid}")
+				.throwException(new ConsumerException("Item not found")).otherwise()
+				.log(LoggingLevel.INFO, "Item found for id : ${header.itemid}").end();
 
 		/**
 		 * Route which invokes MongoDB operation to update the item in the item
